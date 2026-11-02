@@ -1,0 +1,43 @@
+{
+  "name": "mkvcast-desktop",
+  "version": "2.0.0",
+  "description": "MKVCast - transmite videos de la PC al Chromecast",
+  "main": "main.js",
+  "author": "MKVCast",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "server": "node server.js",
+    "build": "electron-builder --win portable --x64"
+  },
+  "dependencies": {
+    "chromecast-api": "^0.4.1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mkvcast.desktop",
+    "productName": "MKVCast",
+    "directories": { "output": "dist" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "index.html",
+      "desktop.html",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [{ "target": "portable", "arch": ["x64"] }],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "MKVCast-${version}-portable.exe"
+    }
+  }
+}

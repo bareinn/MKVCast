@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MKVCast</title>
+<style>
+:root{--bg:#111;--c:#1e1e1e;--t:#eee;--a:#3b82f6;--m:#888}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:16px system-ui,sans-serif;padding-bottom:40px}
+header,.box{background:var(--c);padding:12px;margin:8px;border-radius:10px}
+button,select{background:#2c2c2c;color:var(--t);border:0;border-radius:8px;padding:10px 14px;font-size:16px}
+button.p{background:var(--a)}button:active{opacity:.6}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:0 0 auto}.grow{flex:1!important;min-width:0}
+.item{padding:10px 4px;border-bottom:1px solid #2a2a2a;display:flex;gap:8px;align-items:center}
+.item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+small{color:var(--m)}input[type=range]{width:100%}
+#login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:30}
+#login input{font-size:28px;text-align:center;width:180px;padding:10px;border-radius:8px;border:0}
+.cur{background:#243b63}
+body.drag::after{content:'Suelta los videos aquí';position:fixed;inset:0;background:#3b82f6dd;display:flex;align-items:center;justify-content:center;font-size:26px;z-index:9}
+#msg{position:fixed;top:0;left:0;right:0;background:#3b82f6;padding:10px;text-align:center;display:none;z-index:40}
+#opts{display:none;position:fixed;left:0;right:0;bottom:0;margin:0;border-radius:16px 16px 0 0;z-index:20;box-shadow:0 -6px 24px #000c;padding:16px}
+#opts select{width:100%}
+</style></head><body>
+<div id="msg"></div>
+<div id="login"><h2>MKVCast</h2><input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button class="p" onclick="doLogin()">Entrar</button><small id="lerr"></small></div>
+
+<header class="row"><b class="grow">MKVCast <small id="enc"></small></b><select id="dev" onchange="api('/api/device',{name:this.value})"></select></header>
+
+<div class="box" id="np" style="display:none">
+  <div id="npn" style="font-weight:600"></div><small id="npt"></small>
+  <input type="range" id="seek" min="0" max="100" value="0" onchange="seekTo(this.value)">
+  <div class="row"><button onclick="ctl('prev')">⏮</button><button onclick="rel(-30)">−30</button><button class="p" id="pp" onclick="pp()">⏯</button><button onclick="rel(30)">+30</button><button onclick="ctl('next')">⏭</button><button onclick="ctl('stop')">⏹</button></div>
+  <div class="row" style="margin-top:8px">💬 Sincro<button onclick="subDelay(-1)">−</button><small class="grow" id="sdl" style="text-align:center" onclick="subDelayReset()">0 s</small><button onclick="subDelay(1)">+</button></div>
+  <div class="row" style="margin-top:8px">🔊<input id="vol" class="grow" type="range" min="0" max="100" value="60" oninput="volDrag=true" onchange="ctl('volume',this.value/100);setTimeout(()=>{volDrag=false},2500)"></div>
+</div>
+
+<div class="box" id="recbox" style="display:none"><b>Continuar viendo</b><div id="reclist"></div></div>
+
+<div class="box"><b>Subtítulos</b>
+  <div class="row" style="margin-top:8px"><select id="sauto" class="grow" onchange="setSub(0)"><option value="1">Automáticos (los del archivo)</option><option value="0">Sin subtítulos por defecto</option></select>
+  <select id="ssize" class="grow" onchange="setSub(1)"><option value="small">Pequeño</option><option value="normal">Normal</option><option value="large">Grande</option><option value="xlarge">Muy grande</option></select></div>
+  <details style="margin-top:8px"><summary>Estilo de los subtítulos</summary>
+  <div class="row" style="margin-top:8px"><select id="sass" class="grow" onchange="setSub(1)"><option value="1">ASS: respetar el original</option><option value="0">ASS: usar mi estilo</option></select></div>
+  <div class="row" style="margin-top:8px"><select id="sc" class="grow" onchange="setSub(1)"><option value="white">Color: blanco</option><option value="yellow">Color: amarillo</option><option value="cyan">Color: celeste</option><option value="green">Color: verde</option><option value="orange">Color: naranja</option><option value="pink">Color: rosa</option><option value="gray">Color: gris</option></select>
+  <select id="sbg" class="grow" onchange="setSub(1)"><option value="none">Sin fondo</option><option value="box">Fondo negro</option></select></div>
+  <div class="row" style="margin-top:8px"><select id="sbo" class="grow" onchange="setSub(1)"><option value="30">Fondo 30 %</option><option value="50">Fondo 50 %</option><option value="70">Fondo 70 %</option><option value="100">Fondo 100 %</option></select>
+  <select id="sol" class="grow" onchange="setSub(1)"><option value="0">Sin borde</option><option value="1">Borde fino</option><option value="2">Borde medio</option><option value="3">Borde grueso</option><option value="4">Borde muy grueso</option></select></div>
+  <div class="row" style="margin-top:8px"><select id="ssh" class="grow" onchange="setSub(1)"><option value="0">Sin sombra</option><option value="1">Sombra suave</option><option value="2">Sombra media</option><option value="3">Sombra fuerte</option></select>
+  <select id="spos" class="grow" onchange="setSub(1)"><option value="bottom">Abajo</option><option value="raised">Abajo, más arriba</option><option value="middle">Al medio</option><option value="top">Arriba</option></select></div>
+  <div class="row" style="margin-top:8px"><button onclick="resetStyle()">Restablecer estilo</button></div></details></div>
+
+<div class="box"><b>Imagen y sonido</b>
+  <div class="row" style="margin-top:8px"><select id="shdr" class="grow" onchange="setAV()"><option value="1">HDR: corregir colores</option><option value="0">HDR: no tocar</option></select>
+  <select id="saud" class="grow" onchange="setAV()"><option value="normal">Sonido normal</option><option value="dialog">Diálogos claros</option><option value="night">Modo noche</option></select></div></div>
+
+<div class="box"><div class="row"><b class="grow" id="path">Carpetas</b><button onclick="document.getElementById('file').click()">＋ Archivos</button><button onclick="up()">⬆</button></div>
+<input id="file" type="file" multiple accept="video/*,.mkv" hidden onchange="addFiles(this.files);this.value=''">
+<small>Tip: arrastra videos a esta ventana</small><div id="list"></div></div>
+
+<div class="box"><div class="row"><b class="grow">Cola</b><button onclick="api('/api/queue',{action:'clear'}).then(poll)">Vaciar</button></div><div id="queue"></div></div>
+
+<div class="box"><b>Playlists</b><div id="pls"></div></div>
+
+<div class="box" id="opts"><b id="on"></b><div class="row" style="margin:10px 0"><select id="oa"></select><select id="os"></select></div>
+  <div class="row"><button class="p" onclick="goPlay()">▶ Reproducir</button><button onclick="goAdd()">＋ Cola</button><button onclick="closeOpts()">✕</button></div></div>
+
+<script>
+let T=localStorage.t||'',S={},cur={r:null,p:''},sel=null,curDirs=[],curFiles=[],toastT=null;
+const $=id=>document.getElementById(id),fmt=s=>{s=Math.floor(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s%60).padStart(2,'0')};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t,ms){$('msg').textContent=t;$('msg').style.display=t?'block':'none';clearTimeout(toastT);if(t&&ms)toastT=setTimeout(()=>toast(''),ms)}
+async function api(u,b){const r=await fetch(u,{method:b?'POST':'GET',headers:{'x-token':T,'content-type':'application/json'},body:b?JSON.stringify(b):undefined});
+  if(r.status==401&&u!='/api/login'){$('login').style.display='flex';throw 0}const j=await r.json();if(j.error)alert(j.error);return j}
+async function doLogin(){const r=await fetch('/api/login',{method:'POST',body:JSON.stringify({pin:$('pin').value})});const j=await r.json();
+  if(j.token){T=localStorage.t=j.token;$('login').style.display='none';poll();browse()}else $('lerr').textContent='PIN incorrecto'}
+const ctl=(cmd,value)=>api('/api/control',{cmd,value});
+const pp=()=>ctl(S.status&&S.status.state=='PAUSED'?'resume':'pause');
+let volDrag=false;let sdPend=0,sdTimer=null;
+const fmtDelay=d=>!d?'0 s':(d>0?'+':'−')+String(Math.abs(Math.round(d*10)/10)).replace('.',',')+' s';
+function subDelay(dir){if(!S.now)return;sdPend=Math.round((sdPend+dir*0.5)*10)/10;
+  $('sdl').textContent=fmtDelay(Math.round(((S.now.delay||0)+sdPend)*10)/10);clearTimeout(sdTimer);
+  sdTimer=setTimeout(async()=>{const d=sdPend;sdPend=0;if(!d)return;if(S.now&&S.now.sub>=0)toast('Aplicando sincronía…',2000);
+    const j=await api('/api/subdelay',{delta:d});if(S.now&&j&&typeof j.delay=='number')S.now.delay=j.delay;poll()},700)}
+async function subDelayReset(){if(!S.now)return;clearTimeout(sdTimer);sdPend=0;await api('/api/subdelay',{reset:true});poll()}
+function rel(d){if(S.now)api('/api/control',{cmd:'seek',to:S.status.pos+d})}
+function seekTo(v){if(S.now)api('/api/control',{cmd:'seek',to:S.now.duration*v/100})}
+async function poll(){try{S=await api('/api/state');
+  $('dev').innerHTML=S.devices.map(d=>`<option ${d==S.device?'selected':''}>${esc(d)}</option>`).join('')||'<option>Buscando Chromecast…</option>';
+  $('enc').textContent=S.encoder?(S.encoder=='cpu'?'· CPU':'· GPU '+S.encoder.toUpperCase()):'';
+  if(S.settings){if(document.activeElement!=$('sauto'))$('sauto').value=S.settings.autoSub?'1':'0';if(document.activeElement!=$('ssize'))$('ssize').value=S.settings.subSize;if(document.activeElement!=$('sass'))$('sass').value=S.settings.assRespect===false?'0':'1';
+    if(document.activeElement!=$('shdr'))$('shdr').value=S.settings.hdrFix===false?'0':'1';if(document.activeElement!=$('saud'))$('saud').value=S.settings.audioMode||'normal';
+    const st=S.settings.style||{};[['sc','color'],['sbg','bg'],['sbo','bgOpacity'],['sol','outline'],['ssh','shadow'],['spos','pos']].forEach(([id,k])=>{const el=$(id);if(document.activeElement===el||st[k]==null)return;
+      let v=String(st[k]);if(![...el.options].some(o=>o.value===v)){v=el.options[0].value;[...el.options].forEach(o=>{if(Math.abs(o.value-st[k])<Math.abs(v-st[k]))v=o.value})}el.value=v});
+    $('sbo').style.display=$('sbg').value=='box'?'':'none';$('ssh').style.display=$('sbg').value=='box'?'none':''}
+  const n=S.now;$('np').style.display=n?'block':'none';
+  if(n){$('npn').textContent=n.name;$('npt').textContent=fmt(S.status.pos)+' / '+fmt(n.duration)+'  ·  '+S.status.state;if(document.activeElement!=$('seek'))$('seek').value=n.duration?S.status.pos/n.duration*100:0;if(sdPend===0)$('sdl').textContent=fmtDelay(n.delay||0);if(typeof S.status.volume==='number'&&document.activeElement!=$('vol')&&!volDrag)$('vol').value=Math.round(S.status.volume*100)}
+  $('recbox').style.display=(S.recent||[]).length?'block':'none';
+  $('reclist').innerHTML=(S.recent||[]).map((x,i)=>`<div class="item"><span onclick="recPlay(${i})">${esc(x.name)} <small>${fmt(x.pos)}</small></span><button onclick="recDel(${i})">✕</button></div>`).join('');
+  $('queue').innerHTML=S.queue.map((q,i)=>`<div class="item ${i==S.qi?'cur':''}"><span onclick="playQ(${i})">${esc(q.p.split(/[\\/]/).pop())}</span><button onclick="api('/api/queue',{action:'remove',i:${i}}).then(poll)">✕</button></div>`).join('')||'<small>Vacía</small>';
+  $('pls').innerHTML=(S.playlists||[]).map(p=>`<div class="item"><span>♫ ${esc(p.name)} <small>${p.items.length}</small></span><button onclick="plGo('${p.id}',false)">▶</button><button onclick="plGo('${p.id}',true)">🔀</button><button onclick="plAdd('${p.id}')">＋</button></div>`).join('')||'<small>Sin playlists (se crean desde la app de la PC)</small>';
+  if(cur.r===null)browse()}catch(e){}}
+async function browse(){
+  if(cur.r===null){$('path').textContent='Carpetas';$('list').innerHTML=(S.folders||[]).map((f,i)=>`<div class="item" onclick="openRoot(${i})"><span>${i==S.uploadsIdx?'📥 Soltados':'📁 '+esc(f)}</span></div>`).join('');return}
+  const j=await api(`/api/ls?r=${cur.r}&p=${encodeURIComponent(cur.p)}`);
+  curDirs=j.dirs||[];curFiles=j.files||[];
+  $('path').textContent=cur.p||S.folders[cur.r];
+  $('list').innerHTML=curDirs.map((d,i)=>`<div class="item" onclick="openDir(${i})"><span>📁 ${esc(d)}</span></div>`).join('')+
+   curFiles.map((f,i)=>`<div class="item" onclick="pickIdx(${i})"><span>${f.seen?'✓ ':'🎬 '}${esc(f.name)}</span>${f.pos?`<small>${fmt(f.pos)}</small>`:''}</div>`).join('')}
+function openRoot(i){cur={r:i,p:''};browse()}
+function openDir(i){cur={r:cur.r,p:(cur.p?cur.p+'/':'')+curDirs[i]};browse()}
+function up(){if(cur.r===null)return;if(!cur.p)cur={r:null,p:''};else cur.p=cur.p.split(/[\\/]/).slice(0,-1).join('/');browse()}
+function pickIdx(i){const f=curFiles[i];if(f)pick(f.p)}
+function closeOpts(){$('opts').style.display='none'}
+const IMG_SUB=/^(hdmv_pgs_subtitle|dvd_subtitle|dvb_subtitle|xsub)$/i;
+const SUB_KIND={subrip:'SRT',srt:'SRT',ass:'ASS',ssa:'SSA',mov_text:'texto',webvtt:'VTT',text:'texto',hdmv_pgs_subtitle:'PGS · imagen',dvd_subtitle:'VobSub · imagen',dvb_subtitle:'DVB · imagen',xsub:'imagen'};
+const subKind=s=>s.ext?(s.title||'').split('.').pop().toUpperCase():(SUB_KIND[(s.codec||'').toLowerCase()]||s.codec||'?');
+const subLabel=s=>`${s.lang||'?'} ${s.title||''} (${subKind(s)})${s.def?' · predet.':''}${s.forced?' · forzado':''}${s.ext?' · externo':''}${IMG_SUB.test(s.codec||'')?' · no compatible':''}`.replace(/\s+/g,' ');
+function defSub(subs){if(S.settings&&!S.settings.autoSub)return -1;subs=subs.filter(x=>!IMG_SUB.test(x.codec||''));const t=subs.find(x=>x.def)||subs.find(x=>x.forced)||subs.find(x=>/^(spa|es)/.test(x.lang||''));return t?t.i:-1}
+async function recPlay(i){const x=(S.recent||[])[i];if(!x)return;await api('/api/play',{r:x.r,p:x.p});poll()}
+async function recDel(i){const x=(S.recent||[])[i];if(!x)return;await api('/api/recent',{r:x.r,p:x.p});poll()}
+async function setAV(){await api('/api/settings',{hdrFix:$('shdr').value=='1',audioMode:$('saud').value});
+  if(S.now&&S.status){toast('Aplicando…',2000);await api('/api/control',{cmd:'seek',to:S.status.pos})}poll()}
+function resetStyle(){api('/api/settings',{style:{color:'white',bg:'none',bgOpacity:60,outline:1,shadow:0,pos:'bottom'}}).then(()=>{if(S.now&&S.status)api('/api/control',{cmd:'seek',to:S.status.pos});poll()})}
+async function setSub(restart){
+  await api('/api/settings',{autoSub:$('sauto').value=='1',subSize:$('ssize').value,assRespect:$('sass').value=='1',style:{color:$('sc').value,bg:$('sbg').value,bgOpacity:+$('sbo').value,outline:+$('sol').value,shadow:+$('ssh').value,pos:$('spos').value}});
+  $('sbo').style.display=$('sbg').value=='box'?'':'none';$('ssh').style.display=$('sbg').value=='box'?'none':'';
+  if(restart&&S.now&&S.status){toast('Aplicando estilo…',2000);await api('/api/control',{cmd:'seek',to:S.status.pos})}
+  poll()}
+async function pick(p){
+  sel={r:cur.r,p};
+  toast('Leyendo video…');
+  try{
+    const i=await api(`/api/info?r=${cur.r}&p=${encodeURIComponent(p)}`);
+    if(i.error){toast('');return}
+    $('on').textContent=p.split(/[\\/]/).pop();
+    $('oa').innerHTML=(i.audio||[]).map(a=>`<option value="${a.i}">🔊 ${esc(a.lang||'?')} ${esc(a.title||a.codec)}</option>`).join('')||'<option value="0">🔊 Audio por defecto</option>';
+    $('os').innerHTML='<option value="-1">Sin subtítulos</option>'+(i.subs||[]).map(s=>`<option value="${s.i}" ${s.i===defSub(i.subs)?'selected':''} ${IMG_SUB.test(s.codec||'')?'disabled':''}>💬 ${esc(subLabel(s))}</option>`).join('');
+    $('opts').style.display='block';
+  }finally{toast('')}
+}
+async function plGo(id,shuffle){const j=await api('/api/playlist',{action:'load',id,mode:'replace',play:true,shuffle});if(j&&!j.error)toast('Reproduciendo la playlist',1500);poll()}
+async function plAdd(id){const j=await api('/api/playlist',{action:'load',id,mode:'append'});if(j&&!j.error)toast('Agregada a la cola',1500);poll()}
+async function goPlay(){await api('/api/play',{...sel,audio:+$('oa').value,sub:+$('os').value});closeOpts();poll()}
+async function goAdd(){await api('/api/queue',{action:'add',...sel});closeOpts();toast('Agregado a la cola',1500);poll()}
+async function playQ(i){await api('/api/play',S.queue[i]);poll()}
+const msg=t=>toast(t);
+async function addFiles(files){
+  const items=[];
+  try{for(const f of files){
+    if(!/\.(mkv|mp4|avi|mov|m4v|webm)$/i.test(f.name))continue;
+    msg('Buscando '+f.name+'…');
+    let j=await api(`/api/find?name=${encodeURIComponent(f.name)}&size=${f.size}`);
+    if(!j.p){msg('Subiendo '+f.name+'… (no está en tus carpetas)');
+      const r=await fetch('/api/upload?name='+encodeURIComponent(f.name),{method:'PUT',headers:{'x-token':T},body:f});j=await r.json();if(j.error){alert(j.error);continue}}
+    items.push(j)}
+  for(const it of items)await api('/api/queue',{action:'add',r:it.r,p:it.p});
+  if(items.length&&!S.now)await api('/api/play',items[0])}finally{msg('');poll()}}
+addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag')});
+addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag')});
+addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag');addFiles(e.dataTransfer.files)});
+if(T)poll();else $('login').style.display='flex';
+setInterval(()=>T&&poll(),2000);
+</script></body></html>

@@ -1,0 +1,7 @@
+{
+  "folders": ["E:\\Peliculas y series"],
+  "gpu": "auto",
+  "maxHeight": 1080,
+  "maxFps": 30,
+  "port": 8099
+}

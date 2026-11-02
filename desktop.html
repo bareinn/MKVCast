@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MKVCast</title>
+<style>
+:root{
+  --bg:#0b0d12;--side:#0f1218;--panel:#151922;--panel2:#1b202b;--line:#232a38;
+  --t:#e9ecf3;--m:#8a92a6;--a:#6d8dff;--a2:#9a6dff;--ok:#3ddc97;--bad:#ff6b6b;--r:14px
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--t);font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
+  display:grid;grid-template-columns:236px 1fr;grid-template-rows:1fr 96px;overflow:hidden;user-select:none}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#262d3c;border-radius:10px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* barra lateral */
+#side{grid-row:1;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:20px 14px 14px;gap:4px;min-height:0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.2px;padding:0 8px 18px}
+.logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--a),var(--a2));display:grid;place-items:center;font-style:normal;font-size:15px;box-shadow:0 6px 18px #6d8dff44}
+.nav{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:var(--m);cursor:pointer;border:0;background:none;text-align:left;width:100%;font-size:14px}
+.nav:hover{background:#171b25;color:var(--t)}
+.nav.on{background:var(--panel2);color:var(--t)}
+.nav svg{width:18px;height:18px;flex:none}
+.badge{margin-left:auto;background:var(--a);color:#fff;border-radius:20px;font-size:11px;padding:1px 8px;display:none}
+.sidefoot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:10px 4px 0}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--m);padding-left:2px}
+select,.inp{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;outline:none;width:100%}
+select:focus,.inp:focus{border-color:var(--a)}
+option{background:#1b202b}
+.enc{font-size:12px;color:var(--m);display:flex;align-items:center;gap:7px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+
+/* contenido */
+#main{grid-row:1;overflow-y:auto;padding:24px 30px 34px;min-height:0}
+.view{display:none}.view.on{display:block}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.head h1{font-size:22px;margin:0;font-weight:700;letter-spacing:.2px}
+.crumb{color:var(--m);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 120px;min-width:0}
+.head h1{white-space:nowrap}
+input,.inp{user-select:text}
+.sp{flex:1}
+#v-lib .sp{display:none}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--t);padding:8px 15px;border-radius:10px;font-size:13px;transition:.12s}
+.btn:hover{border-color:#34405a;background:#202636}
+.btn:active{transform:scale(.97)}
+.btn.p{background:linear-gradient(135deg,var(--a),var(--a2));border:0}
+.btn.p:hover{filter:brightness(1.1)}
+.btn.d{color:var(--bad)}
+.search{width:220px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(214px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;position:relative;transition:transform .12s,border-color .12s,box-shadow .12s}
+.card:hover{transform:translateY(-3px);border-color:#3a4766;box-shadow:0 12px 28px #0007}
+.thumb{aspect-ratio:16/9;background:linear-gradient(135deg,#1c2232,#11141c);display:grid;place-items:center;font-size:34px;position:relative;overflow:hidden}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.card.fold .thumb{background:linear-gradient(135deg,#222a40,#141824);font-size:44px}
+.ci{padding:10px 12px 12px}
+.cn{font-weight:600;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.cm{color:var(--m);font-size:12px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act{position:absolute;right:8px;top:8px;display:flex;gap:6px;opacity:0;transition:opacity .12s}
+.card:hover .act{opacity:1}
+.rb{width:32px;height:32px;border-radius:50%;border:0;background:#000b;backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff;font-size:16px}
+.rb:hover{background:var(--a)}
+.resume{position:absolute;left:8px;bottom:8px;background:#000b;border-radius:20px;padding:2px 9px;font-size:11px;color:#fff}
+.empty{color:var(--m);padding:46px 0;text-align:center}
+
+/* cola */
+.qrow{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:12px;border:1px solid transparent;cursor:pointer}
+.qrow:hover{background:var(--panel)}
+.qrow.cur{background:#1a2440;border-color:#2c3b66}
+.qn{width:24px;text-align:center;color:var(--m);font-size:13px}
+.qimg{width:92px;aspect-ratio:16/9;border-radius:8px;background:#1c2232;overflow:hidden;position:relative;flex:none}
+.qimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.qt{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ajustes */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin-bottom:16px;max-width:760px}
+.sec h2{margin:0 0 4px;font-size:15px}
+.sec p{margin:0 0 14px;color:var(--m);font-size:12.5px}
+.frow{display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.frow>label{width:190px;color:var(--m);font-size:13px}
+.frow>.inp,.frow>select{flex:1;min-width:160px;width:auto}
+.frow input[type=checkbox]{width:18px;height:18px;accent-color:var(--a)}
+.path{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:13px}
+.path span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:11px;color:var(--m);border:1px solid var(--line);border-radius:20px;padding:0 8px}
+
+/* reproductor */
+#bar{grid-column:1/3;grid-row:2;background:var(--panel);border-top:1px solid var(--line);display:grid;
+  grid-template-columns:minmax(220px,1fr) minmax(380px,1.7fr) minmax(300px,1.1fr);align-items:center;gap:18px;padding:0 22px}
+.np{display:flex;align-items:center;gap:13px;min-width:0}
+.npimg{width:92px;aspect-ratio:16/9;border-radius:9px;background:linear-gradient(135deg,#1c2232,#11141c);overflow:hidden;position:relative;display:grid;place-items:center;flex:none;font-size:20px}
+.npimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.npt{min-width:0}
+.npn{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nps{color:var(--m);font-size:12.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctl{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.btns{display:flex;align-items:center;gap:10px}
+.ib{background:none;border:0;color:var(--t);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;transition:.12s;font-size:12px;font-weight:600}
+.ib:hover{background:#222939}
+.ib svg{width:20px;height:20px}
+.ib.big{width:46px;height:46px;background:linear-gradient(135deg,var(--a),var(--a2));box-shadow:0 6px 18px #6d8dff44}
+.ib.big:hover{filter:brightness(1.12)}
+.ib.big svg{width:24px;height:24px}
+.seekrow{display:flex;align-items:center;gap:10px;width:100%;color:var(--m);font-size:12px;font-variant-numeric:tabular-nums}
+.seekrow span{width:48px}.seekrow span:first-child{text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:none;flex:1;min-width:0;cursor:pointer;
+  background:linear-gradient(to right,var(--a) var(--p,0%),#2a3142 var(--p,0%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #0006}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.rrow{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.right select{width:132px;padding:6px 8px;font-size:12.5px}
+.sprev{flex:1;height:84px;border-radius:10px;position:relative;overflow:hidden;background:linear-gradient(120deg,#c43,#36c 45%,#2a8 75%,#eb3)}
+.sprev span{position:absolute;left:50%;transform:translateX(-50%);padding:1px 8px;white-space:nowrap}
+.sech{font-size:14px;margin:0 0 12px;color:var(--m);font-weight:600}
+.prog{position:absolute;left:0;right:0;bottom:0;height:4px;background:#0009}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,var(--a),var(--a2))}
+.seenb{position:absolute;right:8px;bottom:8px;background:#000b;border-radius:20px;padding:2px 9px;font-size:11px;color:#8fe3a8}
+.card.seen .thumb img{opacity:.5}
+.sbtn{background:#222939;border:1px solid var(--line);color:var(--t);width:28px;height:28px;border-radius:8px;font-size:15px;line-height:1;display:grid;place-items:center}
+.sbtn:hover{background:#2c3550}
+.sdl{font-size:12px;color:var(--m);min-width:96px;text-align:center;cursor:pointer;font-variant-numeric:tabular-nums}
+.sdl.on{color:var(--a)}
+#vol{max-width:110px}
+
+/* modal y avisos */
+#modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
+#modal.on{display:flex}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;width:min(520px,92vw);padding:22px;box-shadow:0 30px 80px #000a}
+.mbox h3{margin:0 0 6px;font-size:16px;word-break:break-word}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{font-size:11.5px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:2px 10px;color:var(--m)}
+.chip.hot{color:#ffd37a;border-color:#4b3d1c}
+.mbox .frow>label{width:90px}
+.mfoot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+#toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-90px);background:#1f2740;border:1px solid #33406b;color:#fff;padding:10px 18px;border-radius:12px;z-index:90;transition:transform .2s;box-shadow:0 10px 30px #0008;max-width:80vw}
+#toast.on{transform:translateX(-50%) translateY(0)}
+.m2list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;margin-top:6px}
+.plpick{text-align:left;display:flex;align-items:center;gap:8px;width:100%}
+#m2{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:60;backdrop-filter:blur(4px)}
+#m2.on{display:flex}
+.btn.sm{padding:5px 11px;font-size:12px;white-space:nowrap}
+.pgrid{grid-template-columns:repeat(auto-fill,minmax(268px,1fr))}
+.pa{display:flex;gap:6px;padding:0 12px 12px;flex-wrap:wrap}
+.pnote{color:var(--m);font-size:12.5px;margin:-8px 0 16px}
+.prow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+body.drag::after{content:'Suelta los videos o carpetas aquí';position:fixed;inset:12px;border:2px dashed var(--a);border-radius:20px;background:#6d8dff22;display:grid;place-items:center;font-size:24px;z-index:80;backdrop-filter:blur(3px)}
+</style></head><body>
+
+<aside id="side">
+  <div class="logo"><i>▶</i>MKVCast</div>
+  <button class="nav on" id="n-lib" onclick="showView('lib')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 4v5M15 4v5"/></svg>Biblioteca</button>
+  <button class="nav" id="n-queue" onclick="showView('queue')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h9"/></svg>Cola<span class="badge" id="qbadge">0</span></button>
+  <button class="nav" id="n-pl" onclick="showView('pl')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>Playlists</button>
+  <button class="nav" id="n-cfg" onclick="showView('cfg')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+  <div class="sidefoot">
+    <div class="lbl">Transmitir a</div>
+    <select id="dev" onchange="api('/api/device',{name:this.value})"><option>Buscando Chromecast…</option></select>
+    <div class="enc"><span class="dot"></span><span id="enc">…</span></div>
+  </div>
+</aside>
+
+<main id="main">
+  <!-- Biblioteca -->
+  <section class="view on" id="v-lib">
+    <div class="head">
+      <button class="btn" id="backb" onclick="up()" style="display:none">← Atrás</button>
+      <h1 id="ltitle">Biblioteca</h1><span class="crumb" id="crumb"></span>
+      <span class="sp"></span>
+      <input class="inp search" id="q" placeholder="Buscar en esta carpeta…" oninput="filt=this.value;drawList()">
+      <button class="btn p" onclick="addFilesBtn()">＋ Archivos</button>
+    </div>
+    <div id="recwrap" style="display:none;margin-bottom:22px"><div class="sech">Continuar viendo</div><div class="grid" id="rec"></div></div>
+    <div class="grid" id="list"></div>
+  </section>
+
+  <!-- Cola -->
+  <section class="view" id="v-queue">
+    <div class="head"><h1>Cola de reproducción</h1><span class="sp"></span>
+      <button class="btn p" onclick="playFirst()">▶ Reproducir</button>
+      <button class="btn" onclick="saveQueueAsPl()">Guardar como playlist</button>
+      <button class="btn d" onclick="api('/api/queue',{action:'clear'}).then(poll)">Vaciar</button></div>
+    <div id="queue"></div>
+  </section>
+
+  <!-- Playlists -->
+  <section class="view" id="v-pl">
+    <div class="head">
+      <button class="btn" id="plback" onclick="plOpen=null;drawPl(true)" style="display:none">← Playlists</button>
+      <h1 id="pltitle">Playlists</h1><span class="sp"></span>
+      <button class="btn" id="plsave" onclick="saveQueueAsPl()">Guardar la cola como playlist</button>
+      <button class="btn p" id="plnew" onclick="newPl()">＋ Nueva playlist</button>
+    </div>
+    <div id="pl"></div>
+  </section>
+
+  <!-- Ajustes -->
+  <section class="view" id="v-cfg">
+    <div class="head"><h1>Ajustes</h1><span class="sp"></span><button class="btn p" onclick="saveCfg()">Guardar cambios</button></div>
+
+    <div class="sec"><h2>Subtítulos</h2><p>Se aplican enseguida. Cambiar el tamaño o el estilo reinicia el video en la misma posición. Los subtítulos ASS (típicos del anime) traen su propia posición, fuente y color: con "Respetar el original" el tamaño y el estilo de abajo no se les aplican.</p>
+      <div class="frow"><label>Al reproducir</label><select id="sauto" onchange="setSub(0)"><option value="1">Automáticos (los del archivo)</option><option value="0">Sin subtítulos por defecto</option></select></div>
+      <div class="frow"><label>Subtítulos con estilo (ASS)</label><select id="sass" onchange="setSub(1)"><option value="1">Respetar el original (posición, fuente, color y tamaño)</option><option value="0">Usar mi estilo de abajo (pierde las posiciones)</option></select></div>
+      <div class="frow"><label>Tamaño de letra</label><select id="ssize" onchange="setSub(1)"><option value="small">Pequeño</option><option value="normal">Normal</option><option value="large">Grande</option><option value="xlarge">Muy grande</option></select></div>
+      <div class="frow"><label>Color del texto</label><select id="sc" onchange="setSub(1)"><option value="white">Blanco</option><option value="yellow">Amarillo</option><option value="cyan">Celeste</option><option value="green">Verde</option><option value="orange">Naranja</option><option value="pink">Rosa</option><option value="gray">Gris</option></select></div>
+      <div class="frow"><label>Fondo</label><select id="sbg" onchange="setSub(1)"><option value="none">Sin fondo</option><option value="box">Caja negra detrás del texto</option></select></div>
+      <div class="frow" id="rbo"><label>Opacidad del fondo</label><select id="sbo" onchange="setSub(1)"><option value="30">30 % (muy transparente)</option><option value="50">50 %</option><option value="70">70 %</option><option value="100">100 % (negro sólido)</option></select></div>
+      <div class="frow"><label>Borde del texto</label><select id="sol" onchange="setSub(1)"><option value="0">Sin borde</option><option value="1">Fino</option><option value="2">Medio</option><option value="3">Grueso</option><option value="4">Muy grueso</option></select></div>
+      <div class="frow" id="rsh"><label>Sombra</label><select id="ssh" onchange="setSub(1)"><option value="0">Sin sombra</option><option value="1">Suave</option><option value="2">Media</option><option value="3">Fuerte</option></select></div>
+      <div class="frow"><label>Posición</label><select id="spos" onchange="setSub(1)"><option value="bottom">Abajo</option><option value="raised">Abajo, un poco más arriba</option><option value="middle">Al medio</option><option value="top">Arriba</option></select></div>
+      <div class="frow"><label>Vista previa</label><div id="sprev" class="sprev"><span>Así se verán los subtítulos</span></div></div>
+      <div class="frow"><label></label><button class="btn" onclick="resetStyle()">Restablecer estilo</button></div>
+    </div>
+
+    <div class="sec"><h2>Imagen y sonido</h2><p>Se aplican enseguida; el video se reinicia en la misma posición.</p>
+      <div class="frow"><label>Colores de videos HDR</label><select id="shdr" onchange="setAV()"><option value="1">Corregir (recomendado)</option><option value="0">No tocar (se ven apagados)</option></select></div>
+      <p style="margin:-6px 0 14px">La corrección usa más procesador. Si un video 4K HDR se corta, probá desactivarla.</p>
+      <div class="frow"><label>Sonido</label><select id="saud" onchange="setAV()"><option value="normal">Normal</option><option value="dialog">Diálogos más claros (5.1 a estéreo)</option><option value="night">Modo noche (diálogos claros y volumen parejo)</option></select></div>
+    </div>
+
+    <div class="sec"><h2>Carpetas de la biblioteca</h2><p>Se muestran en la pantalla Biblioteca. También podés arrastrar carpetas o videos a la ventana.</p>
+      <div id="folders"></div>
+      <button class="btn" id="addfold" onclick="addFolder()">＋ Agregar carpeta</button>
+    </div>
+
+    <div class="sec"><h2>Video y compatibilidad</h2><p>Valores pensados para el Chromecast de 2ª generación. Se guardan con "Guardar cambios".</p>
+      <div class="frow"><label>Resolución máxima</label><select id="c-h"><option value="1080">1080p</option><option value="720">720p</option><option value="480">480p</option></select></div>
+      <div class="frow"><label>Fotogramas por segundo máx.</label><select id="c-fps"><option value="24">24</option><option value="25">25</option><option value="30">30 (recomendado)</option><option value="60">60 (solo equipos nuevos)</option></select></div>
+      <div class="frow"><label>Codificador de video</label><select id="c-gpu"><option value="auto">Automático (GPU si hay)</option><option value="nvenc">NVIDIA (NVENC)</option><option value="qsv">Intel (QSV)</option><option value="amf">AMD (AMF)</option><option value="cpu">Procesador (CPU)</option></select></div>
+      <div class="frow"><label>En uso ahora</label><span id="c-enc" class="tag">…</span></div>
+      <div class="frow"><label>Decodificar con la GPU</label><input type="checkbox" id="c-hw"></div>
+    </div>
+
+    <div class="sec"><h2>Control desde el celular</h2><p>Abrí esta dirección en el navegador del celular (misma red wifi).</p>
+      <div class="frow"><label>Dirección</label><input class="inp" id="c-url" readonly><button class="btn" onclick="copyUrl()">Copiar</button></div>
+      <div class="frow"><label>IP de esta PC (opcional)</label><input class="inp" id="c-ip" placeholder="Automática"></div>
+      <div class="frow"><label>PIN (opcional)</label><input class="inp" id="c-pin" placeholder="Sin PIN"></div>
+      <p style="margin:6px 0 0">El PIN solo se pide desde el celular; en esta ventana no hace falta. Si la IP detectada no es la correcta (por ejemplo con VPN o máquinas virtuales), escribila acá.</p>
+    </div>
+  </section>
+</main>
+
+<footer id="bar">
+  <div class="np">
+    <div class="npimg" id="npimg">🎬</div>
+    <div class="npt"><div class="npn" id="npn">Nada en reproducción</div><div class="nps" id="nps">Elegí un video de la biblioteca</div></div>
+  </div>
+  <div class="ctl">
+    <div class="btns">
+      <button class="ib" title="Anterior" onclick="ctl('prev')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+      <button class="ib" title="Retroceder 30 s" onclick="rel(-30)">−30</button>
+      <button class="ib big" id="ppb" title="Reproducir / pausa" onclick="pp()"></button>
+      <button class="ib" title="Avanzar 30 s" onclick="rel(30)">+30</button>
+      <button class="ib" title="Siguiente" onclick="ctl('next')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+      <button class="ib" title="Detener" onclick="ctl('stop')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v10H7z"/></svg></button>
+    </div>
+    <div class="seekrow"><span id="tcur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="tdur">0:00</span></div>
+  </div>
+  <div class="right">
+    <div class="rrow"><span title="Volumen">🔊</span><input type="range" id="vol" min="0" max="100" value="60"></div>
+    <div class="rrow">
+    <select id="bsize" title="Tamaño de subtítulos" onchange="$('ssize').value=this.value;setSub(1)"><option value="small">Subt.: pequeño</option><option value="normal">Subt.: normal</option><option value="large">Subt.: grande</option><option value="xlarge">Subt.: muy grande</option></select>
+    <button class="sbtn" title="Adelantar los subtítulos (aparecen antes). Clic: 0,5 s · Mayús+clic: 0,1 s" onclick="subDelay(-1,event)">−</button>
+    <span class="sdl" id="sdl" title="Sincronía de subtítulos. Clic para volver a 0" onclick="subDelayReset()">Sincro 0 s</span>
+    <button class="sbtn" title="Atrasar los subtítulos (aparecen después). Clic: 0,5 s · Mayús+clic: 0,1 s" onclick="subDelay(1,event)">+</button>
+    </div>
+  </div>
+</footer>
+
+<div id="modal" onclick="if(event.target===this)closeModal()"><div class="mbox">
+  <h3 id="mt"></h3><div class="chips" id="mchips"></div>
+  <div class="frow"><label>Audio</label><select id="oa"></select></div>
+  <div class="frow"><label>Subtítulos</label><select id="os"></select></div>
+  <div class="mfoot"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn" onclick="plFromModal()">♫ Playlist</button><button class="btn" onclick="goAdd()">＋ Cola</button><button class="btn p" onclick="goPlay()">▶ Reproducir</button></div>
+</div></div>
+<div id="m2" onclick="if(event.target===this)m2done(null)"><div class="mbox">
+  <h3 id="m2t"></h3><p id="m2p" style="color:var(--m);margin:0 0 12px"></p>
+  <input class="inp" id="m2i" onkeydown="if(event.key==='Enter')m2ok()">
+  <div id="m2l" class="m2list"></div>
+  <div class="mfoot"><button class="btn" onclick="m2done(null)">Cancelar</button><button class="btn p" id="m2ok" onclick="m2ok()">OK</button></div>
+</div></div>
+<div id="toast"></div>
+
+<script>
+const D = window.desktop || null;          // puente con la app de escritorio (diálogos y rutas reales)
+let S = {}, cur = { r: null, p: '' }, curDirs = [], curFiles = [], shownDirs = [], shownFiles = [];
+let plOpen = null, plSig = '', m2res = null;
+let sel = null, view = 'lib', CFG = null, filt = '', toastT = null, dragSeek = false, lastRoots = '', lastDev = '', lastThumb = '', selInfo = null;
+const $ = id => document.getElementById(id);
+const fmt = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const base = p => String(p).split(/[\\/]/).pop();
+const ICON = {
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>'
+};
+const PL = () => S.playlists || [];
+const STATE_ES = { PLAYING: 'Reproduciendo', PAUSED: 'En pausa', BUFFERING: 'Cargando…', IDLE: 'Detenido' };
+
+function toast(t, ms) {
+  const el = $('toast'); el.textContent = t; el.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms || 2200);
+}
+async function api(u, b) {
+  const h = { 'content-type': 'application/json' };
+  if (localStorage.t) h['x-token'] = localStorage.t;
+  const r = await fetch(u, { method: b ? 'POST' : 'GET', headers: h, body: b ? JSON.stringify(b) : undefined });
+  if (r.status === 401) throw new Error('Esta pantalla pide PIN: abrila desde la app de escritorio.');
+  const j = await r.json();
+  if (j && j.error) toast(j.error, 3500);
+  return j;
+}
+const ctl = (cmd, value) => api('/api/control', { cmd, value });
+const pp = () => ctl(S.status && S.status.state === 'PAUSED' ? 'resume' : 'pause');
+function rel(d) { if (S.now && S.status) api('/api/control', { cmd: 'seek', to: Math.max(0, S.status.pos + d) }); }
+const thumbUrl = (r, p) => '/api/thumb?r=' + r + '&p=' + encodeURIComponent(p);
+function setFill(el) { el.style.setProperty('--p', (el.value / (el.max || 100) * 100) + '%'); }
+
+/* ---------- vistas ---------- */
+function showView(v) {
+  view = v;
+  ['lib', 'queue', 'pl', 'cfg'].forEach(x => { $('v-' + x).classList.toggle('on', x === v); $('n-' + x).classList.toggle('on', x === v); });
+  if (v === 'lib') browse();
+  if (v === 'queue') renderQueue(true);
+  if (v === 'pl') drawPl(true);
+  if (v === 'cfg') loadCfg();
+}
+
+/* ---------- estado ---------- */
+async function poll() {
+  try {
+    S = await api('/api/state');
+    renderDevices(); renderPlayer(); renderQueue(false); syncSub(); renderRecent();
+    if (view === 'pl') drawPl(false);
+    if (view === 'lib' && cur.r === null && JSON.stringify(S.folders) !== lastRoots) browse();
+  } catch (e) {}
+}
+function renderDevices() {
+  const list = S.devices || [];
+  const sig = list.join('|') + '#' + S.device;
+  if (sig === lastDev) return;
+  lastDev = sig;
+  $('dev').innerHTML = list.map(d => `<option ${d === S.device ? 'selected' : ''}>${esc(d)}</option>`).join('') || '<option>Buscando Chromecast…</option>';
+  $('enc').textContent = S.encoder ? (S.encoder === 'cpu' ? 'Convirtiendo con CPU' : 'Convirtiendo con GPU ' + S.encoder.toUpperCase()) : '…';
+}
+function syncSub() {
+  if (!S.settings) return;
+  if (document.activeElement !== $('sauto')) $('sauto').value = S.settings.autoSub ? '1' : '0';
+  if (document.activeElement !== $('ssize')) $('ssize').value = S.settings.subSize;
+  if (document.activeElement !== $('sass')) $('sass').value = S.settings.assRespect === false ? '0' : '1';
+  if (document.activeElement !== $('shdr')) $('shdr').value = S.settings.hdrFix === false ? '0' : '1';
+  if (document.activeElement !== $('saud')) $('saud').value = S.settings.audioMode || 'normal';
+  if (document.activeElement !== $('bsize')) $('bsize').value = S.settings.subSize;
+  const st = S.settings.style || {};
+  [['sc', 'color'], ['sbg', 'bg'], ['sbo', 'bgOpacity'], ['sol', 'outline'], ['ssh', 'shadow'], ['spos', 'pos']].forEach(function(x) {
+    const el = $(x[0]); if (document.activeElement === el || st[x[1]] == null) return;
+    if (![...el.options].some(o => o.value === String(st[x[1]]))) {   // opacidad que no está en la lista: se acerca a la más cercana
+      let best = el.options[0].value; [...el.options].forEach(o => { if (Math.abs(o.value - st[x[1]]) < Math.abs(best - st[x[1]])) best = o.value; });
+      el.value = best;
+    } else el.value = String(st[x[1]]);
+  });
+  $('rbo').style.display = $('sbg').value === 'box' ? '' : 'none';
+  $('rsh').style.display = $('sbg').value === 'box' ? 'none' : '';
+  drawPreview();
+  $('enc').textContent = S.encoder ? (S.encoder === 'cpu' ? 'Convirtiendo con CPU' : 'Convirtiendo con GPU ' + S.encoder.toUpperCase()) : '…';
+}
+/* ---------- sincronía de subtítulos ---------- */
+let sdPend = 0, sdTimer = null;
+function fmtDelay(d) {
+  if (!d) return 'Sincro 0 s';
+  return 'Sincro ' + (d > 0 ? '+' : '−') + String(Math.abs(Math.round(d * 10) / 10)).replace('.', ',') + ' s';
+}
+function subDelay(dir, ev) {
+  if (!S.now) return;
+  sdPend += dir * (ev && ev.shiftKey ? 0.1 : 0.5);
+  sdPend = Math.round(sdPend * 10) / 10;
+  const cur = Math.round(((S.now.delay || 0) + sdPend) * 10) / 10;
+  $('sdl').textContent = fmtDelay(cur); $('sdl').classList.toggle('on', !!cur);
+  clearTimeout(sdTimer);
+  sdTimer = setTimeout(async () => {   // se juntan varios clics y se reinicia el video una sola vez
+    const d = sdPend; sdPend = 0;
+    if (!d) return;
+    if (S.now && S.now.sub >= 0) toast('Aplicando sincronía…');
+    const j = await api('/api/subdelay', { delta: d });
+    if (S.now && j && typeof j.delay === 'number') S.now.delay = j.delay;
+    poll();
+  }, 700);
+}
+async function subDelayReset() {
+  if (!S.now) return;
+  clearTimeout(sdTimer); sdPend = 0;
+  await api('/api/subdelay', { reset: true });
+  poll();
+}
+function renderPlayer() {
+  const n = S.now, st = S.status || {};
+  const playing = st.state === 'PLAYING' || st.state === 'BUFFERING';
+  $('ppb').innerHTML = (n && playing) ? ICON.pause : ICON.play;
+  if (!n) {
+    $('sdl').textContent = fmtDelay(0); $('sdl').classList.remove('on');
+    $('npn').textContent = 'Nada en reproducción'; $('nps').textContent = 'Elegí un video de la biblioteca';
+    $('tcur').textContent = '0:00'; $('tdur').textContent = '0:00';
+    if (!dragSeek) { $('seek').value = 0; setFill($('seek')); }
+    if (lastThumb !== '') { lastThumb = ''; $('npimg').innerHTML = '🎬'; }
+    return;
+  }
+  $('npn').textContent = n.name;
+  if (typeof st.volume === 'number' && document.activeElement !== $('vol') && !volDrag) { $('vol').value = Math.round(st.volume * 100); setFill($('vol')); }
+  if (sdPend === 0) { $('sdl').textContent = fmtDelay(n.delay || 0); $('sdl').classList.toggle('on', !!n.delay); }
+  $('nps').textContent = (STATE_ES[st.state] || st.state) + (S.device ? ' · ' + S.device : '');
+  const key = n.r + '|' + n.p;
+  if (key !== lastThumb) {
+    lastThumb = key;
+    $('npimg').innerHTML = '🎬<img alt="" src="' + thumbUrl(n.r, n.p) + '" onerror="this.remove()">';
+  }
+  if (!dragSeek) {
+    $('tcur').textContent = fmt(st.pos); $('tdur').textContent = fmt(n.duration);
+    $('seek').value = n.duration ? Math.min(1000, st.pos / n.duration * 1000) : 0; setFill($('seek'));
+  }
+}
+function renderQueue(force) {
+  const q = S.queue || [];
+  const b = $('qbadge'); b.textContent = q.length; b.style.display = q.length ? 'inline-block' : 'none';
+  if (view !== 'queue' && !force) return;
+  $('queue').innerHTML = q.map((it, i) => `
+    <div class="qrow ${i === S.qi ? 'cur' : ''}" onclick="playQ(${i})">
+      <div class="qn">${i === S.qi ? '▶' : i + 1}</div>
+      <div class="qimg"><img alt="" loading="lazy" src="${thumbUrl(it.r, it.p)}" onerror="this.remove()"></div>
+      <div class="qt">${esc(base(it.p))}</div>
+      <button class="btn" onclick="event.stopPropagation();api('/api/queue',{action:'remove',i:${i}}).then(poll)">✕</button>
+    </div>`).join('') || '<div class="empty">La cola está vacía. Agregá videos desde la biblioteca con el botón ＋.</div>';
+}
+
+/* ---------- biblioteca ---------- */
+function rootName(i) {
+  const f = (S.folders || [])[i] || '';
+  if (i === S.uploadsIdx) return '📥 Soltados';
+  return base(f) || f;
+}
+async function browse() {
+  if (cur.r === null) {
+    lastRoots = JSON.stringify(S.folders);
+    $('ltitle').textContent = 'Biblioteca'; $('crumb').textContent = ''; $('backb').style.display = 'none';
+    renderRecent(true);
+    curDirs = []; curFiles = [];
+    const rs = S.folders || [];
+    $('list').innerHTML = rs.map((f, i) => `
+      <div class="card fold" onclick="openRoot(${i})"><div class="thumb">📁</div>
+      <div class="ci"><div class="cn">${esc(rootName(i))}</div><div class="cm">${esc(i === S.uploadsIdx ? 'Videos subidos desde el celular' : f)}</div></div></div>`).join('')
+      || '<div class="empty">Todavía no hay carpetas. Agregalas en Ajustes o arrastrá videos a esta ventana.</div>';
+    return;
+  }
+  const j = await api(`/api/ls?r=${cur.r}&p=${encodeURIComponent(cur.p)}`);
+  curDirs = j.dirs || []; curFiles = j.files || [];
+  $('ltitle').textContent = cur.p ? base(cur.p) : rootName(cur.r);
+  $('crumb').textContent = cur.p ? (S.folders[cur.r] || '') + ' / ' + cur.p : (S.folders[cur.r] || '');
+  $('backb').style.display = 'inline-block';
+  renderRecent();
+  drawList();
+}
+function drawList() {
+  if (cur.r === null) return;
+  const f = filt.trim().toLowerCase();
+  shownDirs = curDirs.filter(d => !f || d.toLowerCase().includes(f));
+  shownFiles = curFiles.filter(x => !f || x.name.toLowerCase().includes(f));
+  const html =
+    shownDirs.map((d, i) => `
+      <div class="card fold" onclick="openDir(${i})"><div class="thumb">📁</div>
+      <div class="ci"><div class="cn">${esc(d)}</div><div class="cm">Carpeta</div></div></div>`).join('') +
+    shownFiles.map((x, i) => `
+      <div class="card ${x.seen ? 'seen' : ''}" onclick="pickIdx(${i})">
+        <div class="thumb">🎬<img alt="" loading="lazy" src="${thumbUrl(cur.r, x.p)}" onerror="this.remove()">
+          <div class="act"><button class="rb" title="Reproducir ahora" onclick="event.stopPropagation();qPlay(${i})">▶</button><button class="rb" title="Agregar a la cola" onclick="event.stopPropagation();qAdd(${i})">＋</button><button class="rb" title="Agregar a una playlist" onclick="event.stopPropagation();qPl(${i})">♫</button><button class="rb" title="${x.seen ? 'Marcar como no visto' : 'Marcar como visto'}" onclick="event.stopPropagation();qSeen(${i})">✓</button></div>
+          ${x.pos ? `<span class="resume">Continuar ${fmt(x.pos)}</span>` : (x.seen ? '<span class="seenb">✓ Visto</span>' : '')}
+        </div>
+        <div class="ci"><div class="cn">${esc(x.name.replace(/\.[^.]+$/, ''))}</div><div class="cm">${esc(x.name.split('.').pop().toUpperCase())}</div></div>
+      </div>`).join('');
+  $('list').innerHTML = html || '<div class="empty">No hay videos ni carpetas aquí.</div>';
+}
+function openRoot(i) { cur = { r: i, p: '' }; filt = ''; $('q').value = ''; browse(); }
+function openDir(i) { const d = shownDirs[i]; if (d == null) return; cur = { r: cur.r, p: (cur.p ? cur.p + '/' : '') + d }; filt = ''; $('q').value = ''; browse(); }
+function up() {
+  if (cur.r === null) return;
+  if (!cur.p) cur = { r: null, p: '' }; else cur.p = cur.p.split(/[\\/]/).slice(0, -1).join('/');
+  filt = ''; $('q').value = ''; browse();
+}
+async function qSeen(i) {
+  const f = shownFiles[i]; if (!f) return;
+  await api('/api/seen', { r: cur.r, p: f.p, seen: !f.seen });
+  f.seen = !f.seen; if (f.seen) f.pos = 0;
+  drawList(); poll();
+}
+/* ---------- continuar viendo ---------- */
+let recSig = '';
+function renderRecent(force) {
+  const w = $('recwrap'); if (!w) return;
+  const list = S.recent || [];
+  const show = view === 'lib' && cur.r === null && list.length > 0;
+  w.style.display = show ? '' : 'none';
+  if (!show) { recSig = ''; return; }
+  const sig = JSON.stringify(list.map(x => [x.r, x.p, Math.floor(x.pos / 30)]));
+  if (sig === recSig && !force) return;
+  recSig = sig;
+  $('rec').innerHTML = list.map((x, i) => `
+    <div class="card" onclick="recPlay(${i})">
+      <div class="thumb">🎬<img alt="" loading="lazy" src="${thumbUrl(x.r, x.p)}" onerror="this.remove()">
+        <div class="act"><button class="rb" title="Quitar de la lista" onclick="event.stopPropagation();recDel(${i})">✕</button></div>
+        <span class="resume">Continuar ${fmt(x.pos)}</span>
+        ${x.dur ? `<div class="prog"><i style="width:${Math.min(100, x.pos / x.dur * 100)}%"></i></div>` : ''}
+      </div>
+      <div class="ci"><div class="cn">${esc(x.name.replace(/\.[^.]+$/, ''))}</div><div class="cm">${x.dur ? fmt(Math.max(0, x.dur - x.pos)) + ' restantes' : ''}</div></div>
+    </div>`).join('');
+}
+async function recPlay(i) { const x = (S.recent || [])[i]; if (!x) return; await api('/api/play', { r: x.r, p: x.p }); poll(); }
+async function recDel(i) { const x = (S.recent || [])[i]; if (!x) return; await api('/api/recent', { r: x.r, p: x.p }); poll(); }
+async function qPlay(i) { const f = shownFiles[i]; if (!f) return; await api('/api/play', { r: cur.r, p: f.p }); poll(); }
+async function qAdd(i) { const f = shownFiles[i]; if (!f) return; await api('/api/queue', { action: 'add', r: cur.r, p: f.p }); toast('Agregado a la cola'); poll(); }
+async function playQ(i) { await api('/api/play', S.queue[i]); poll(); }
+async function playFirst() { if (S.queue && S.queue.length) { await api('/api/play', S.queue[Math.max(0, S.qi)]); poll(); } }
+
+/* ---------- ventanas auxiliares ---------- */
+function m2open(o) {
+  $('m2t').textContent = o.title;
+  $('m2p').textContent = o.text || ''; $('m2p').style.display = o.text ? '' : 'none';
+  $('m2i').style.display = o.input ? '' : 'none'; $('m2i').value = o.value || '';
+  $('m2l').innerHTML = o.listHtml || '';
+  $('m2ok').style.display = o.ok ? '' : 'none'; $('m2ok').textContent = o.ok || 'OK';
+  $('m2').classList.add('on');
+  if (o.input) setTimeout(() => { $('m2i').focus(); $('m2i').select(); }, 30);
+  return new Promise(r => { m2res = r; });
+}
+function m2done(v) { $('m2').classList.remove('on'); const r = m2res; m2res = null; if (r) r(v); }
+function m2ok() { m2done($('m2i').style.display === 'none' ? true : $('m2i').value.trim()); }
+const askName = (title, value, ok) => m2open({ title, input: true, value, ok });
+const askConfirm = (title, text, ok) => m2open({ title, text, ok });
+
+/* ---------- playlists ---------- */
+const plApi = b => api('/api/playlist', b);
+function drawPl(force) {
+  const pls = PL();
+  const sig = JSON.stringify(pls) + '|' + plOpen + '|' + (S.qi);
+  if (!force && sig === plSig) return;
+  plSig = sig;
+  const pl = plOpen ? pls.find(x => x.id === plOpen) : null;
+  if (plOpen && !pl) plOpen = null;
+  $('plback').style.display = pl ? 'inline-block' : 'none';
+  $('plsave').style.display = pl ? 'none' : ''; $('plnew').style.display = pl ? 'none' : '';
+  $('pltitle').textContent = pl ? pl.name : 'Playlists';
+  const box = $('pl');
+  if (!pl) {
+    box.className = 'grid pgrid';
+    box.innerHTML = pls.map(p => {
+      const first = p.items[0];
+      return `<div class="card" onclick="plShow('${p.id}')">
+        <div class="thumb">♫${first ? `<img alt="" loading="lazy" src="${thumbUrl(first.r, first.p)}" onerror="this.remove()">` : ''}</div>
+        <div class="ci"><div class="cn">${esc(p.name)}</div><div class="cm">${p.items.length} ${p.items.length === 1 ? 'video' : 'videos'}</div></div>
+        <div class="pa">
+          <button class="btn sm p" title="Reproducir" onclick="event.stopPropagation();plPlay('${p.id}',false)">▶ Reproducir</button>
+          <button class="btn sm" title="Mezclar y reproducir" onclick="event.stopPropagation();plPlay('${p.id}',true)">🔀</button>
+          <button class="btn sm" title="Agregar a la cola" onclick="event.stopPropagation();plAppend('${p.id}')">＋ Cola</button>
+        </div></div>`;
+    }).join('') || '<div class="empty" style="grid-column:1/-1">Todavía no hay playlists.<br>Creá una con "＋ Nueva playlist", guardá la cola actual, o agregá videos con el botón ♫ de la biblioteca.</div>';
+    return;
+  }
+  box.className = '';
+  box.innerHTML = `
+    <div class="prow">
+      <button class="btn p" onclick="plPlay('${pl.id}',false)">▶ Reproducir</button>
+      <button class="btn" onclick="plPlay('${pl.id}',true)">🔀 Mezclar</button>
+      <button class="btn" onclick="plAppend('${pl.id}')">＋ A la cola</button>
+      <button class="btn" onclick="plRename('${pl.id}')">Renombrar</button>
+      <button class="btn d" onclick="plDelete('${pl.id}')">Eliminar</button>
+    </div>` +
+    (pl.items.map((it, i) => `
+    <div class="qrow" onclick="plPlayItem('${pl.id}',${i})">
+      <div class="qn">${i + 1}</div>
+      <div class="qimg"><img alt="" loading="lazy" src="${thumbUrl(it.r, it.p)}" onerror="this.remove()"></div>
+      <div class="qt">${esc(base(it.p))}</div>
+      <button class="btn sm" title="Subir" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation();plMove('${pl.id}',${i},${i - 1})">↑</button>
+      <button class="btn sm" title="Bajar" ${i === pl.items.length - 1 ? 'disabled' : ''} onclick="event.stopPropagation();plMove('${pl.id}',${i},${i + 1})">↓</button>
+      <button class="btn sm" title="Quitar de la playlist" onclick="event.stopPropagation();plRemove('${pl.id}',${i})">✕</button>
+    </div>`).join('') || '<div class="empty">Esta playlist está vacía. Agregá videos con el botón ♫ de la biblioteca.</div>');
+}
+function plShow(id) { plOpen = id; drawPl(true); }
+async function plPlay(id, shuffle) {
+  const j = await plApi({ action: 'load', id, mode: 'replace', play: true, shuffle });
+  if (j && !j.error) toast(shuffle ? 'Playlist mezclada' : 'Reproduciendo la playlist');
+  poll();
+}
+async function plAppend(id) { const j = await plApi({ action: 'load', id, mode: 'append' }); if (j && !j.error) toast('Agregada a la cola (' + j.n + ')'); poll(); }
+async function plPlayItem(id, i) { const p = PL().find(x => x.id === id); if (p && p.items[i]) { await api('/api/play', p.items[i]); poll(); } }
+async function plMove(id, i, to) { await plApi({ action: 'move', id, i, to }); await poll(); drawPl(true); }
+async function plRemove(id, i) { await plApi({ action: 'remove', id, i }); await poll(); drawPl(true); }
+async function plRename(id) {
+  const p = PL().find(x => x.id === id); if (!p) return;
+  const n = await askName('Renombrar playlist', p.name, 'Guardar'); if (!n) return;
+  await plApi({ action: 'rename', id, name: n }); await poll(); drawPl(true);
+}
+async function plDelete(id) {
+  const p = PL().find(x => x.id === id); if (!p) return;
+  const ok = await askConfirm('Eliminar playlist', '¿Eliminar «' + p.name + '»? Los videos no se borran, solo la lista.', 'Eliminar');
+  if (!ok) return;
+  await plApi({ action: 'delete', id }); plOpen = null; await poll(); drawPl(true); toast('Playlist eliminada');
+}
+async function newPl() {
+  const n = await askName('Nueva playlist', '', 'Crear'); if (!n) return;
+  await plApi({ action: 'create', name: n }); await poll(); drawPl(true); toast('Playlist creada');
+}
+async function saveQueueAsPl() {
+  if (!(S.queue || []).length) { toast('La cola está vacía'); return; }
+  const n = await askName('Guardar la cola como playlist', 'Mi playlist', 'Guardar'); if (!n) return;
+  await plApi({ action: 'saveQueue', name: n }); await poll(); toast('Playlist guardada'); drawPl(true);
+}
+async function choosePl(item) {
+  const pls = PL();
+  const html = pls.map((p, i) => `<button class="btn plpick" onclick="m2done(${i})">♫ ${esc(p.name)} <span class="tag">${p.items.length}</span></button>`).join('') +
+    `<button class="btn plpick" onclick="m2done(-1)">＋ Nueva playlist…</button>`;
+  const v = await m2open({ title: 'Agregar a una playlist', listHtml: html });
+  if (v === null || v === undefined) return;
+  if (v === -1) {
+    const n = await askName('Nueva playlist', '', 'Crear'); if (!n) return;
+    await plApi({ action: 'create', name: n, items: [item] }); toast('Playlist «' + n + '» creada'); poll(); return;
+  }
+  const p = pls[v]; if (!p) return;
+  await plApi({ action: 'add', id: p.id, r: item.r, p: item.p }); toast('Agregado a «' + p.name + '»'); poll();
+}
+function qPl(i) { const f = shownFiles[i]; if (f) choosePl({ r: cur.r, p: f.p }); }
+function plFromModal() { const it = sel; closeModal(); if (it) choosePl(it); }
+
+/* ---------- ventana de opciones (audio / subtítulos) ---------- */
+const IMG_SUB = /^(hdmv_pgs_subtitle|dvd_subtitle|dvb_subtitle|xsub)$/i;   // subtítulos de imagen: no se pueden mostrar
+const SUB_KIND = { subrip: 'SRT', srt: 'SRT', ass: 'ASS', ssa: 'SSA', mov_text: 'texto', webvtt: 'VTT', text: 'texto', hdmv_pgs_subtitle: 'PGS · imagen', dvd_subtitle: 'VobSub · imagen', dvb_subtitle: 'DVB · imagen', xsub: 'imagen' };
+function subKind(s) { return s.ext ? (s.title || '').split('.').pop().toUpperCase() : (SUB_KIND[(s.codec || '').toLowerCase()] || s.codec || '?'); }
+function subLabel(s) {
+  const img = IMG_SUB.test(s.codec || '');
+  return `${s.lang || '?'} ${s.title || ''} (${subKind(s)})${s.def ? ' · predeterminado' : ''}${s.forced ? ' · forzado' : ''}${s.ext ? ' · archivo externo' : ''}${img ? ' · no compatible' : ''}`.replace(/\s+/g, ' ');
+}
+function defSub(subs) {
+  if (S.settings && !S.settings.autoSub) return -1;
+  subs = subs.filter(x => !IMG_SUB.test(x.codec || ''));
+  const t = subs.find(x => x.def) || subs.find(x => x.forced) || subs.find(x => /^(spa|es)/.test(x.lang || ''));
+  return t ? t.i : -1;
+}
+async function pickIdx(i) {
+  const f = shownFiles[i]; if (!f) return;
+  sel = { r: cur.r, p: f.p };
+  toast('Leyendo video…', 1200);
+  const info = await api(`/api/info?r=${cur.r}&p=${encodeURIComponent(f.p)}`);
+  if (!info || info.error) return;
+  selInfo = info;
+  $('mt').textContent = base(f.p);
+  const chips = [];
+  if (info.vcodec) chips.push(`<span class="chip ${info.vcodec === 'hevc' ? 'hot' : ''}">${esc(info.vcodec.toUpperCase())}${info.vcodec === 'hevc' ? ' · se convierte en vivo' : ''}</span>`);
+  if (info.height) chips.push(`<span class="chip">${info.height}p</span>`);
+  if (info.fps) chips.push(`<span class="chip">${Math.round(info.fps * 10) / 10} fps</span>`);
+  if (info.duration) chips.push(`<span class="chip">${fmt(info.duration)}</span>`);
+  const nExt = (info.subs || []).filter(x => x.ext).length;
+  if (nExt) chips.push(`<span class="chip">${nExt} subtítulo${nExt > 1 ? 's' : ''} externo${nExt > 1 ? 's' : ''}</span>`);
+  $('mchips').innerHTML = chips.join('');
+  $('oa').innerHTML = (info.audio || []).map(a => `<option value="${a.i}">${esc(a.lang || '?')} ${esc(a.title || a.codec)}</option>`).join('') || '<option value="0">Audio por defecto</option>';
+  const di = defSub(info.subs || []);
+  $('os').innerHTML = '<option value="-1">Sin subtítulos</option>' + (info.subs || []).map(s =>
+    `<option value="${s.i}" ${s.i === di ? 'selected' : ''} ${IMG_SUB.test(s.codec || '') ? 'disabled' : ''}>${esc(subLabel(s))}</option>`).join('');
+  $('modal').classList.add('on');
+}
+function closeModal() { $('modal').classList.remove('on'); }
+async function goPlay() { await api('/api/play', { ...sel, audio: +$('oa').value, sub: +$('os').value }); closeModal(); poll(); }
+async function goAdd() { await api('/api/queue', { action: 'add', ...sel }); closeModal(); toast('Agregado a la cola'); poll(); }
+
+/* ---------- subtítulos (ajustes rápidos) ---------- */
+const PREV_COL = { white: '#fff', yellow: '#ff0', cyan: '#0ff', green: '#0f0', orange: '#f90', pink: '#f8f', gray: '#ccc' };
+const PREV_SIZE = { small: 13, normal: 17, large: 23, xlarge: 29 };
+function drawPreview() {
+  const sp = $('sprev').firstElementChild, o = +$('sol').value, sh = +$('ssh').value, box = $('sbg').value === 'box';
+  const pos = $('spos').value;
+  sp.style.color = PREV_COL[$('sc').value];
+  sp.style.fontSize = PREV_SIZE[$('ssize').value] + 'px';
+  sp.style.fontWeight = '600';
+  sp.style.background = box ? 'rgba(0,0,0,' + (+$('sbo').value / 100) + ')' : 'none';
+  const sd = [];
+  if (!box) {
+    for (let i = 1; i <= o; i++) sd.push('0 0 ' + i + 'px #000', i + 'px 0 0 #000', '-' + i + 'px 0 0 #000', '0 ' + i + 'px 0 #000', '0 -' + i + 'px 0 #000');
+    if (sh) sd.push(sh + 'px ' + sh + 'px ' + (sh * 2) + 'px #000');
+  }
+  sp.style.textShadow = sd.join(',') || 'none';
+  sp.style.top = sp.style.bottom = 'auto';
+  if (pos === 'top') sp.style.top = '6px'; else if (pos === 'middle') sp.style.top = '50%'; else sp.style.bottom = pos === 'raised' ? '22px' : '6px';
+  sp.style.marginTop = pos === 'middle' ? '-' + Math.round(PREV_SIZE[$('ssize').value] * 0.7) + 'px' : '0';
+}
+function resetStyle() {
+  api('/api/settings', { style: { color: 'white', bg: 'none', bgOpacity: 60, outline: 1, shadow: 0, pos: 'bottom' } }).then(() => { if (S.now && S.status) api('/api/control', { cmd: 'seek', to: S.status.pos }); poll(); });
+}
+async function setAV() {
+  await api('/api/settings', { hdrFix: $('shdr').value === '1', audioMode: $('saud').value });
+  if (S.now && S.status) { toast('Aplicando…'); await api('/api/control', { cmd: 'seek', to: S.status.pos }); }
+  poll();
+}
+async function setSub(restart) {
+  await api('/api/settings', { autoSub: $('sauto').value === '1', subSize: $('ssize').value, assRespect: $('sass').value === '1',
+    style: { color: $('sc').value, bg: $('sbg').value, bgOpacity: +$('sbo').value, outline: +$('sol').value, shadow: +$('ssh').value, pos: $('spos').value } });
+  $('rbo').style.display = $('sbg').value === 'box' ? '' : 'none';
+  $('rsh').style.display = $('sbg').value === 'box' ? 'none' : '';
+  drawPreview();
+  if (restart && S.now && S.status) { toast('Aplicando estilo…'); await api('/api/control', { cmd: 'seek', to: S.status.pos }); }
+  poll();
+}
+
+/* ---------- agregar archivos / arrastrar ---------- */
+async function addFilesBtn() {
+  if (D && D.pickFiles) { const ps = await D.pickFiles(); if (ps && ps.length) await addPaths(ps); }
+  else { const i = document.createElement('input'); i.type = 'file'; i.multiple = true; i.accept = 'video/*,.mkv'; i.onchange = () => addFilesWeb(i.files); i.click(); }
+}
+async function addPaths(paths) {
+  const items = []; let opened = false;
+  for (const path of paths) {
+    const j = await api('/api/addpath', { path });
+    if (!j || j.error) continue;
+    if (j.dir) { cur = { r: j.r, p: j.p || '' }; opened = true; } else items.push(j);
+  }
+  for (const it of items) await api('/api/queue', { action: 'add', r: it.r, p: it.p });
+  await poll();
+  if (items.length) {
+    toast(items.length === 1 ? 'Agregado a la cola' : items.length + ' videos agregados a la cola');
+    if (!S.now) { await api('/api/play', items[0]); poll(); }
+  }
+  if (opened) { showView('lib'); }
+}
+async function addFilesWeb(files) {       // respaldo si no se abre desde la app de escritorio
+  const items = [];
+  for (const f of files) {
+    if (!/\.(mkv|mp4|avi|mov|m4v|webm)$/i.test(f.name)) continue;
+    toast('Buscando ' + f.name + '…', 8000);
+    let j = await api(`/api/find?name=${encodeURIComponent(f.name)}&size=${f.size}`);
+    if (!j.p) {
+      toast('Subiendo ' + f.name + '…', 60000);
+      const r = await fetch('/api/upload?name=' + encodeURIComponent(f.name), { method: 'PUT', headers: { 'x-token': localStorage.t || '' }, body: f });
+      j = await r.json(); if (j.error) { toast(j.error, 3500); continue; }
+    }
+    items.push(j);
+  }
+  for (const it of items) await api('/api/queue', { action: 'add', r: it.r, p: it.p });
+  await poll();
+  if (items.length && !S.now) { await api('/api/play', items[0]); poll(); }
+}
+addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag'); });
+addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag'); });
+addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('drag');
+  const files = Array.from(e.dataTransfer.files || []);
+  if (D && D.pathFor) addPaths(files.map(f => D.pathFor(f)).filter(Boolean)); else addFilesWeb(files);
+});
+
+/* ---------- ajustes ---------- */
+async function loadCfg() {
+  const c = await api('/api/config'); if (!c || c.error) return;
+  CFG = c;
+  $('c-h').value = String(c.maxHeight); $('c-fps').value = String(c.maxFps); $('c-gpu').value = c.gpu;
+  $('c-hw').checked = !!c.hwdecode; $('c-pin').value = c.pin || ''; $('c-ip').value = c.customIp || '';
+  $('c-url').value = 'http://' + c.ip + ':' + c.port;
+  $('c-enc').textContent = c.encoder === 'cpu' ? 'CPU (libx264)' : 'GPU ' + c.encoder.toUpperCase();
+  $('addfold').style.display = (D && D.pickFolder) ? 'inline-block' : 'none';
+  drawFolders();
+  syncSub();
+}
+function drawFolders() {
+  const f = CFG.folders || [], x = CFG.extra || [];
+  $('folders').innerHTML =
+    f.map((p, i) => `<div class="path"><span title="${esc(p)}">📁 ${esc(p)}</span><button class="btn d" onclick="rmFolder(${i},false)">Quitar</button></div>`).join('') +
+    x.map((p, i) => `<div class="path"><span title="${esc(p)}">📁 ${esc(p)}</span><span class="tag">agregada arrastrando</span><button class="btn d" onclick="rmFolder(${i},true)">Quitar</button></div>`).join('') ||
+    '<p>No hay carpetas todavía.</p>';
+}
+function rmFolder(i, extra) { (extra ? CFG.extra : CFG.folders).splice(i, 1); drawFolders(); }
+async function addFolder() {
+  const p = await D.pickFolder(); if (!p) return;
+  if (!CFG.folders.includes(p)) CFG.folders.push(p);
+  drawFolders();
+}
+async function saveCfg() {
+  toast('Guardando…', 15000);
+  const c = await api('/api/config', {
+    folders: CFG.folders, extra: CFG.extra,
+    maxHeight: +$('c-h').value, maxFps: +$('c-fps').value, gpu: $('c-gpu').value,
+    hwdecode: $('c-hw').checked, pin: $('c-pin').value, customIp: $('c-ip').value
+  });
+  if (c && !c.error) { CFG = c; toast('Cambios guardados'); lastRoots = ''; await poll(); loadCfg(); }
+}
+function copyUrl() { const v = $('c-url').value; try { navigator.clipboard.writeText(v); toast('Dirección copiada'); } catch (e) { $('c-url').select(); } }
+
+/* ---------- barra de reproducción ---------- */
+const seek = $('seek'), vol = $('vol');
+seek.addEventListener('input', () => { dragSeek = true; setFill(seek); if (S.now) $('tcur').textContent = fmt(S.now.duration * seek.value / 1000); });
+seek.addEventListener('change', () => { if (S.now) api('/api/control', { cmd: 'seek', to: S.now.duration * seek.value / 1000 }); setTimeout(() => dragSeek = false, 1500); });
+vol.addEventListener('input', () => setFill(vol));
+let volDrag = false;
+vol.addEventListener('input', () => { volDrag = true; });
+vol.addEventListener('change', () => { ctl('volume', vol.value / 100); setTimeout(() => { volDrag = false; }, 2500); });
+setFill(vol);
+addEventListener('keydown', e => {
+  if (/INPUT|SELECT|TEXTAREA/.test((e.target.tagName || ''))) return;
+  if (e.code === 'Space') { e.preventDefault(); pp(); }
+  else if (e.code === 'ArrowRight') rel(30);
+  else if (e.code === 'ArrowLeft') rel(-30);
+  else if (e.code === 'Escape') { closeModal(); m2done(null); }
+});
+
+$('ppb').innerHTML = ICON.play;
+poll().then(() => {
+  browse();
+  const hv = (location.hash || '').slice(1);        // atajo: desktop.html#queue, #cfg o #lib0 abren esa pantalla
+  if (hv === 'queue' || hv === 'cfg' || hv === 'pl') showView(hv);
+  else if (/^lib\d+$/.test(hv)) openRoot(+hv.slice(3));
+  else if (/^pl-[0-9a-f]+$/.test(hv)) { plOpen = hv.slice(3); showView('pl'); }
+});
+setInterval(poll, 1000);
+</script></body></html>
