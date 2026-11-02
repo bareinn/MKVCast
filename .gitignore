@@ -1,0 +1,9 @@
+node_modules/
+dist/
+config.json
+state.json
+subs/
+thumbs/
+uploads/
+ffmpeg.exe
+ffprobe.exe
