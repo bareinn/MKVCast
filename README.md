@@ -173,9 +173,9 @@ No hay nada que instalar. Se abre en el navegador del celular y funciona en cual
 
 ### Opción 2: app Android
 
-Descargá `MKVCast.apk` desde [Releases](https://github.com/bareinn/MKVCast/releases), instalalo en el celular (hay que permitir orígenes desconocidos) y escribí la dirección del programa de la PC. El código fuente está en la carpeta [`android/`](android/).
-
 App nativa con la misma funcionalidad y un diseño pensado para el celular (compatible con Android 7 en adelante). Recuerda la dirección del servidor y el PIN, y se actualiza sola mientras está abierta.
+
+Descargá `MKVCast.apk` desde [Releases](https://github.com/bareinn/MKVCast/releases), instalalo en el celular (hay que permitir orígenes desconocidos) y escribí la dirección del programa de la PC. El código fuente está en la carpeta [`android/`](android/).
 
 ### Qué se puede hacer desde el celular
 
