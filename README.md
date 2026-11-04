@@ -187,7 +187,8 @@ Casi todo se cambia desde **Ajustes**, o editando `config.json`:
 | `pin` | PIN de acceso desde otros dispositivos (opcional) | sin PIN |
 
 - Los cambios hechos en Ajustes se guardan en `config.json`.
-- El **puerto** y la **resolución máxima** solo se cambian editando `config.json` y reiniciando.
+- La **resolución máxima**, los **fps máximos** y la **GPU** también se cambian desde *Ajustes* en el programa de la PC.
+- El **puerto** solo se cambia editando `config.json` y reiniciando.
 - Si la dirección que muestra el programa no es la de tu red (por VPN o máquinas virtuales), escribí la IP correcta en *Ajustes → IP de esta PC*.
 
 ---
@@ -245,7 +246,7 @@ Descargá `MKVCast.apk` desde [Releases](https://github.com/bareinn/MKVCast/rele
 
 - No reproduce el video en el celular.
 - No funciona fuera de tu red wifi, a menos que uses una VPN (WireGuard, Tailscale) hacia tu PC.
-- No cambia la resolución máxima: eso se define en `config.json`.
+- No cambia la resolución máxima ni los fps: eso se ajusta desde *Ajustes* en el programa de la PC (o en `config.json`).
 - Los botones físicos de volumen no controlan el Chromecast con la pantalla apagada o la app en segundo plano.
 
 ---
@@ -367,7 +368,7 @@ Todo lo que hace el celular pasa por una API HTTP simple, útil si querés hacer
 - Los subtítulos de imagen (PGS / VobSub) no se pueden mostrar.
 - Si cambiás el volumen con el control remoto de la TV, la barra de MKVCast no se entera.
 - Solo funciona dentro de la misma red local (o con VPN).
-- La resolución máxima solo se cambia desde `config.json`.
+- La resolución máxima, los fps y la GPU se cambian desde *Ajustes* en la PC, no desde el celular.
 
 ---
 
