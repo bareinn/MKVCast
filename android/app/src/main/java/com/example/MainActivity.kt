@@ -86,6 +86,22 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (viewModel.shouldHandleVolumeKeys()) {
+            when (keyCode) {
+                android.view.KeyEvent.KEYCODE_VOLUME_UP -> { viewModel.changeVolume(0.05f); return true }
+                android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> { viewModel.changeVolume(-0.05f); return true }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (viewModel.shouldHandleVolumeKeys() &&
+            (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)) return true
+        return super.onKeyUp(keyCode, event)
+    }
 }
 
 @Composable

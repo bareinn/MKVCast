@@ -4,6 +4,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -106,10 +114,18 @@ fun ExpandedPlayerSheet(
         }
     }
 
+    val keyVolume by viewModel.uiVolume.collectAsState()
+    LaunchedEffect(keyVolume) {
+        if (!isDraggingVolume) keyVolume?.let { localVolume = it }
+    }
+
     val displayPos = if (isDraggingSeek) localSeekPosition.toDouble() else status.pos
     val duration = now.duration.coerceAtLeast(1.0)
 
     val currentDelay = pendingSubDelay ?: now.delay
+
+    val volumeFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { volumeFocus.requestFocus() }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -119,6 +135,17 @@ fun ExpandedPlayerSheet(
     ) {
         Column(
             modifier = Modifier
+                .onPreviewKeyEvent { event ->
+                    if ((event.key == Key.VolumeUp || event.key == Key.VolumeDown) &&
+                        viewModel.shouldHandleVolumeKeys()) {
+                        if (event.type == KeyEventType.KeyDown) {
+                            viewModel.changeVolume(if (event.key == Key.VolumeUp) 0.05f else -0.05f)
+                        }
+                        true
+                    } else false
+                }
+                .focusRequester(volumeFocus)
+                .focusable()
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .padding(top = 16.dp, bottom = 32.dp)

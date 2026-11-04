@@ -107,6 +107,10 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     private val _pendingSubDelay = MutableStateFlow<Double?>(null)
     val pendingSubDelay: StateFlow<Double?> = _pendingSubDelay.asStateFlow()
 
+    private val _uiVolume = MutableStateFlow<Float?>(null)
+    val uiVolume: StateFlow<Float?> = _uiVolume.asStateFlow()
+    private var volumeResetJob: Job? = null
+
     // Polling job
     private var pollingJob: Job? = null
     private var isAppForeground = true
@@ -423,6 +427,22 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     fun setVolume(volume: Float) {
         viewModelScope.launch {
             apiClient.control("volume", value = volume.toDouble().coerceIn(0.0, 1.0))
+        }
+    }
+
+    fun shouldHandleVolumeKeys(): Boolean =
+        _serverState.value?.now != null &&
+        _connectionStatus.value == ConnectionStatus.CONNECTED
+
+    fun changeVolume(delta: Float) {
+        val base = _uiVolume.value ?: _serverState.value?.status?.volume ?: 0.5f
+        val next = (base + delta).coerceIn(0f, 1f)
+        _uiVolume.value = next
+        setVolume(next)
+        volumeResetJob?.cancel()
+        volumeResetJob = viewModelScope.launch {
+            delay(3000)
+            _uiVolume.value = null
         }
     }
 
