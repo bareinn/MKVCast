@@ -726,10 +726,21 @@ const server = http.createServer(async function(req, res) {
           // Subtítulo de imagen: se escala al ancho del video ya reducido y se pega abajo, centrado.
           // La sincronía mueve el flujo de subtítulos: con +, aparecen más tarde.
           const vw = needScale ? Math.max(2, Math.round(info.width * MAX_HEIGHT / info.height / 2) * 2) : info.width;
-          const sw = Math.max(2, Math.round(vw * (IMG_SUB_SCALE[saved.settings.subSize] || 1) / 2) * 2);   // ancho del subtítulo según el tamaño elegido
-          let g = '[0:v:0]' + (filters.length ? filters.join(',') : 'null') + '[v0];[0:s:' + s + ']scale=' + sw + ':-2';
+          const vh = needScale ? MAX_HEIGHT : info.height;
+          const f = IMG_SUB_SCALE[saved.settings.subSize] || 1;
+          // El lienzo del subtítulo (normalmente 1920x1080) se ajusta al video SIN deformarlo: así, aunque el video venga
+          // recortado (ej. 1920x800), los subtítulos que están arriba o en el medio no quedan fuera de la imagen.
+          let g = '[0:v:0]' + (filters.length ? filters.join(',') : 'null') + '[v0];[0:s:' + s + ']scale=w=\'trunc(iw*min(' + vw + '/iw,' + vh + '/ih)*' + f + '/2)*2\':h=\'trunc(ih*min(' + vw + '/iw,' + vh + '/ih)*' + f + '/2)*2\'';
           if (subDelay) g += ',setpts=PTS+(' + subDelay.toFixed(3) + ')/TB';
-          g += '[sb];[v0][sb]overlay=x=(W-w)/2:y=H-h:eof_action=pass' + (targetFps ? ',fps=' + targetFps.toFixed(3) : '') + '[vout]';
+          if (f === 1) {
+            g += '[sb];[v0][sb]overlay=x=(W-w)/2:y=H-h:eof_action=pass';
+          } else {
+            // Con otro tamaño, el tercio de arriba del lienzo crece desde el borde superior y el resto desde el inferior,
+            // así ningún subtítulo (de abajo o de cartel arriba) se sale de pantalla.
+            g += ',split[sa][sc];[sa]crop=w=iw:h=\'trunc(ih*0.35/2)*2\':x=0:y=0[st];[sc]crop=w=iw:h=\'ih-trunc(ih*0.35/2)*2\':x=0:y=\'trunc(ih*0.35/2)*2\'[sd];' +
+                 '[v0][st]overlay=x=(W-w)/2:y=0:eof_action=pass[o1];[o1][sd]overlay=x=(W-w)/2:y=H-h:eof_action=pass';
+          }
+          g += (targetFps ? ',fps=' + targetFps.toFixed(3) : '') + '[vout]';
           args.push('-filter_complex', g, '-map', '[vout]');
         } else {
           if (targetFps) filters.push('fps=' + targetFps.toFixed(3));
