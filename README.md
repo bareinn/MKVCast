@@ -185,7 +185,7 @@ Casi todo se cambia desde **Ajustes**, o editando `config.json`:
 | `maxHeight` | Alto máximo de salida | `1080` |
 | `maxFps` | Cuadros por segundo máximos | `30` |
 | `port` | Puerto del servidor | `8099` |
-| `pin` | PIN de acceso desde otros dispositivos (opcional) | sin PIN |
+| `pin` | PIN de acceso desde otros dispositivos (opcional). También se cambia en *Ajustes → Control desde el celular* | sin PIN |
 
 - Los cambios hechos en Ajustes se guardan en `config.json`.
 - La **resolución máxima**, los **fps máximos** y la **GPU** también se cambian desde *Ajustes* en el programa de la PC.
@@ -317,7 +317,7 @@ Los subtítulos de imagen de los Blu-ray (**PGS**) y de los DVD (**VobSub**) se 
 
 ## Seguridad y red
 
-- **PIN opcional**: con `pin` en `config.json`, los demás dispositivos deben iniciar sesión; la propia PC entra sin PIN.
+- **PIN opcional**: se define en *Ajustes → Control desde el celular → PIN* (o con `pin` en `config.json`). Con PIN, los demás dispositivos deben iniciar sesión; la propia PC entra sin PIN.
 - La configuración sensible (`/api/config`, `/api/addpath`) solo se acepta desde la propia PC.
 - El stream usa una clave temporal para que no se pueda acceder al video sin autorización.
 - **No expongas el puerto a internet** (no hagas redirección de puertos en el router). Para usarlo fuera de casa, usá una VPN.
