@@ -19,6 +19,7 @@ import com.example.data.model.SubtitleStyle
 import com.example.data.model.SubtitleTrack
 import com.example.data.model.VideoFile
 import com.example.data.model.VideoInfo
+import com.example.data.model.pickDefaultSubtitle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -342,25 +343,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
 
     fun pickDefaultSubtitleIndex(info: VideoInfo?, settings: ServerSettings): Int {
         if (info == null || !settings.autoSub) return -1
-        val compatibleSubs = info.subs.filter { !it.isImageSubtitle }
-        if (compatibleSubs.isEmpty()) return -1
-
-        // 1. Default
-        val defSub = compatibleSubs.firstOrNull { it.def }
-        if (defSub != null) return defSub.i
-
-        // 2. Forced
-        val forcedSub = compatibleSubs.firstOrNull { it.forced }
-        if (forcedSub != null) return forcedSub.i
-
-        // 3. Spanish (spa, es)
-        val spaSub = compatibleSubs.firstOrNull {
-            val l = it.lang.lowercase()
-            l.startsWith("spa") || l.startsWith("es")
-        }
-        if (spaSub != null) return spaSub.i
-
-        return -1
+        return info.subs.pickDefaultSubtitle()?.i ?: -1
     }
 
     // --- Controls & Playback ---

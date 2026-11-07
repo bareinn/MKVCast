@@ -61,6 +61,7 @@ import com.example.data.model.ServerSettings
 import com.example.data.model.SubtitleTrack
 import com.example.data.model.VideoFile
 import com.example.data.model.VideoInfo
+import com.example.data.model.pickDefaultSubtitle
 import com.example.ui.theme.AccentGradient
 import com.example.ui.theme.AirflowBackground
 import com.example.ui.theme.AirflowBorder
@@ -96,14 +97,7 @@ fun VideoOptionsDialog(
             }
             // Subtitle preselection rule
             if (settings.autoSub) {
-                val compatible = videoInfo.subs.filter { !it.isImageSubtitle }
-                val defSub = compatible.firstOrNull { it.def }
-                    ?: compatible.firstOrNull { it.forced }
-                    ?: compatible.firstOrNull {
-                        val l = it.lang.lowercase()
-                        l.startsWith("spa") || l.startsWith("es")
-                    }
-                selectedSubIndex = defSub?.i ?: -1
+                selectedSubIndex = videoInfo.subs.pickDefaultSubtitle()?.i ?: -1
             } else {
                 selectedSubIndex = -1
             }
@@ -367,7 +361,7 @@ fun VideoOptionsDialog(
 
                                 // Subtitle Tracks
                                 videoInfo.subs.forEach { sub ->
-                                    val isSupported = !sub.isImageSubtitle
+                                    val isSupported = !sub.isUnsupportedSubtitle
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()

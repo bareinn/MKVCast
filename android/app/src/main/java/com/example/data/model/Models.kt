@@ -350,11 +350,13 @@ data class SubtitleTrack(
     val forced: Boolean = false,
     val ext: Boolean = false
 ) {
-    val isImageSubtitle: Boolean
+    val isUnsupportedSubtitle: Boolean
+        get() = codec.equals("xsub", ignoreCase = true)
+
+    val isBitmapSubtitle: Boolean
         get() = codec.equals("hdmv_pgs_subtitle", ignoreCase = true) ||
                 codec.equals("dvd_subtitle", ignoreCase = true) ||
-                codec.equals("dvb_subtitle", ignoreCase = true) ||
-                codec.equals("xsub", ignoreCase = true)
+                codec.equals("dvb_subtitle", ignoreCase = true)
 
     val subtitleType: String
         get() {
@@ -367,7 +369,10 @@ data class SubtitleTrack(
                 "ssa" -> "SSA"
                 "mov_text" -> "texto"
                 "webvtt" -> "VTT"
-                "hdmv_pgs_subtitle", "dvd_subtitle", "dvb_subtitle", "xsub" -> "imagen"
+                "hdmv_pgs_subtitle" -> "PGS · imagen"
+                "dvd_subtitle" -> "VobSub · imagen"
+                "dvb_subtitle" -> "DVB · imagen"
+                "xsub" -> "imagen"
                 else -> codec.ifBlank { "sub" }
             }
         }
@@ -378,7 +383,7 @@ data class SubtitleTrack(
             val titleText = if (title.isNotBlank()) " $title" else ""
             val typeText = " ($subtitleType)"
             val badges = mutableListOf<String>()
-            if (isImageSubtitle) {
+            if (isUnsupportedSubtitle) {
                 badges.add("· no compatible")
             }
             if (ext) badges.add("· archivo externo")
@@ -454,4 +459,17 @@ data class VideoInfo(
             )
         }
     }
+}
+
+fun List<SubtitleTrack>.pickDefaultSubtitle(): SubtitleTrack? {
+    fun pick(list: List<SubtitleTrack>): SubtitleTrack? =
+        list.firstOrNull { it.def }
+            ?: list.firstOrNull { it.forced }
+            ?: list.firstOrNull {
+                val l = it.lang.lowercase()
+                l.startsWith("spa") || l.startsWith("es")
+            }
+    val usable = this.filter { !it.isUnsupportedSubtitle }
+    // Primero los de texto; si no hay ninguno que cumpla, los de imagen
+    return pick(usable.filter { !it.isBitmapSubtitle }) ?: pick(usable.filter { it.isBitmapSubtitle })
 }
