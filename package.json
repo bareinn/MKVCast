@@ -1,6 +1,6 @@
 {
   "name": "mkvcast-desktop",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "MKVCast - transmite videos de la PC al Chromecast",
   "main": "main.js",
   "author": "MKVCast",

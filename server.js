@@ -112,6 +112,7 @@ if (!saved.seen || typeof saved.seen !== 'object') saved.seen = {};             
 saved.settings = Object.assign({ autoSub: true, subSize: 'normal', assRespect: true, hdrFix: true, audioMode: 'normal' }, saved.settings || {});
 // Tamaños (FontSize de libass, el estándar de los .srt es 16)
 const SUB_SIZES = { small: 12, normal: 16, large: 24, xlarge: 32 };
+const IMG_SUB_SCALE = { small: 0.75, normal: 1, large: 1.3, xlarge: 1.6 };   // subtítulos de imagen: "Normal" es el tamaño original
 if (!SUB_SIZES[saved.settings.subSize]) saved.settings.subSize = 'normal';
 const AUDIO_MODES = ['normal', 'dialog', 'night'];   // normal | diálogos (mezcla 5.1 con voces más fuertes) | noche (diálogos + compresor)
 if (AUDIO_MODES.indexOf(saved.settings.audioMode) < 0) saved.settings.audioMode = 'normal';
@@ -725,7 +726,8 @@ const server = http.createServer(async function(req, res) {
           // Subtítulo de imagen: se escala al ancho del video ya reducido y se pega abajo, centrado.
           // La sincronía mueve el flujo de subtítulos: con +, aparecen más tarde.
           const vw = needScale ? Math.max(2, Math.round(info.width * MAX_HEIGHT / info.height / 2) * 2) : info.width;
-          let g = '[0:v:0]' + (filters.length ? filters.join(',') : 'null') + '[v0];[0:s:' + s + ']scale=' + vw + ':-2';
+          const sw = Math.max(2, Math.round(vw * (IMG_SUB_SCALE[saved.settings.subSize] || 1) / 2) * 2);   // ancho del subtítulo según el tamaño elegido
+          let g = '[0:v:0]' + (filters.length ? filters.join(',') : 'null') + '[v0];[0:s:' + s + ']scale=' + sw + ':-2';
           if (subDelay) g += ',setpts=PTS+(' + subDelay.toFixed(3) + ')/TB';
           g += '[sb];[v0][sb]overlay=x=(W-w)/2:y=H-h:eof_action=pass' + (targetFps ? ',fps=' + targetFps.toFixed(3) : '') + '[vout]';
           args.push('-filter_complex', g, '-map', '[vout]');

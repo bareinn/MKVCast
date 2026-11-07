@@ -43,7 +43,7 @@ MKVCast es un programa para Windows que toma cualquier video de tu PC (MKV, MP4,
 
 ## Inicio rápido
 
-1. Descargá `MKVCast-2.0.0-portable.exe` y `MKVCast.apk` desde [**Releases**](https://github.com/bareinn/MKVCast/releases/latest).
+1. Descargá `MKVCast-2.2.0-portable.exe` y `MKVCast.apk` desde [**Releases**](https://github.com/bareinn/MKVCast/releases/latest).
 2. Poné el `.exe` en una carpeta junto con `ffmpeg.exe`, `ffprobe.exe` y tu `config.json` ([cómo hacerlo](#instalación)).
 3. Abrí el programa, elegí tu Chromecast y tus carpetas de videos en **Ajustes**.
 4. Instalá el APK en el celular, escribí la dirección que muestra el programa (por ejemplo `192.168.1.20:8099`) y listo.
@@ -128,11 +128,11 @@ Los subtítulos se **queman en la imagen** durante la conversión, por eso funci
 
 ### Opción A: programa portable (recomendada)
 
-1. Descargá `MKVCast-2.0.0-portable.exe` desde [Releases](https://github.com/bareinn/MKVCast/releases/latest).
+1. Descargá `MKVCast-2.2.0-portable.exe` desde [Releases](https://github.com/bareinn/MKVCast/releases/latest).
 2. Creá una carpeta (por ejemplo `C:\MKVCast`) con estos archivos:
 
    ```
-   MKVCast-2.0.0-portable.exe
+   MKVCast-2.2.0-portable.exe
    ffmpeg.exe
    ffprobe.exe
    config.json
@@ -154,7 +154,7 @@ npm start
 
 # 3. Generar el portable
 npm run build
-# -> dist/MKVCast-2.0.0-portable.exe
+# -> dist/MKVCast-2.2.0-portable.exe
 ```
 
 Antes de compilar, copiá `ffmpeg.exe`, `ffprobe.exe` y tu `config.json` a la carpeta del proyecto.
@@ -288,7 +288,7 @@ Por defecto se **respetan tal cual vienen**: posición, tamaño, colores y fuent
 Los subtítulos de imagen de los Blu-ray (**PGS**) y de los DVD (**VobSub**) se dibujan sobre el video tal como vienen, con su posición y aspecto originales. En el selector aparecen como `spa (PGS · imagen)`.
 
 - La **sincronía** (− / +) funciona igual que con los de texto.
-- El **tamaño y el estilo** de Ajustes no se aplican, porque son imágenes y no texto.
+- El **tamaño** (Pequeño / Normal / Grande / Muy grande) los agranda o achica: *Normal* es el tamaño original. El color, la caja de fondo, el borde y la sombra no se aplican, porque son imágenes y no texto.
 - En modo **automático** se prefieren los de texto; los de imagen se usan solo si no hay otros.
 - Si el video es 4K, el subtítulo se reduce junto con el video a 1080p.
 - Usan algo más de procesador, aunque el costo es bajo frente al de convertir el video.
@@ -373,7 +373,7 @@ Todo lo que hace el celular pasa por una API HTTP simple, útil si querés hacer
 - Solo Windows en la versión portable; el servidor Node.js podría correr en otros sistemas, pero no está probado.
 - La conversión en vivo depende de la potencia de la PC. Los 4K HDR con corrección de color son lo más exigente.
 - Dolby Vision perfil 5 no se corrige bien.
-- En los subtítulos de imagen (PGS / VobSub) no se puede cambiar el tamaño ni el estilo.
+- En los subtítulos de imagen (PGS / VobSub) solo se puede cambiar el tamaño, no el color ni el estilo.
 - Si cambiás el volumen con el control remoto de la TV, la barra de MKVCast no se entera.
 - Solo funciona dentro de la misma red local (o con VPN).
 - La resolución máxima, los fps y la GPU se cambian desde *Ajustes* en la PC, no desde el celular.

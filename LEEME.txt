@@ -37,8 +37,9 @@ QUÉ INCLUYE
   progreso. El botón ✓ de cada video lo marca como visto / no visto; al terminar de ver un video se marca solo.
 - El selector de subtítulos muestra el tipo entre paréntesis, por ejemplo "spa (SRT)" o "spa (PGS · imagen)".
 - Subtítulos de imagen (PGS de Blu-ray, VobSub de DVD, DVB): se dibujan sobre el video tal como vienen
-  (posición y aspecto originales). La sincronía (− / +) funciona igual. El tamaño y el estilo de Ajustes
-  no se aplican a estos, porque son imágenes. En modo automático se prefieren los de texto y solo se usan
+  (posición y aspecto originales). La sincronía (− / +) funciona igual y el tamaño de letra (Pequeño /
+  Normal / Grande / Muy grande) los agranda o achica: "Normal" es el tamaño original. El color, la caja
+  de fondo, el borde y la sombra no se aplican, porque son imágenes. En modo automático se prefieren los de texto y solo se usan
   los de imagen si no hay otros. Si el video está en 4K, la imagen se reduce junto con el video.
   (XSUB, un formato raro, no es compatible.)
 - Volumen: al reproducir por primera vez con un Chromecast, el programa lo pone al 50 % (para que no suene
@@ -65,10 +66,10 @@ PASO A PASO (en Windows)
        npm start
 5) Para generar el programa portable:
        npm run build
-   Queda en:  dist\MKVCast-2.0.0-portable.exe
+   Queda en:  dist\MKVCast-2.2.0-portable.exe
 
 PROGRAMA PORTABLE (la carpeta que llevás a otra PC)
-   MKVCast-2.0.0-portable.exe
+   MKVCast-2.2.0-portable.exe
    ffmpeg.exe
    ffprobe.exe
    config.json

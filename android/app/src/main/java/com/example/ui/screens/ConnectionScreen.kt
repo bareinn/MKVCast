@@ -124,7 +124,7 @@ fun ConnectionScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "MKVCast 2.0",
+                text = "MKVCast 2.2",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = AirflowText
