@@ -1,0 +1,89 @@
+MKVCAST DESKTOP 2.0  -  aplicación de escritorio para transmitir al Chromecast
+=============================================================================
+
+QUÉ INCLUYE
+- Ventana de escritorio con biblioteca (miniaturas), cola, ajustes y reproductor fijo abajo.
+- Todo lo anterior sigue funcionando: HEVC/H.265 convertido en vivo a H.264 (High 4.1),
+  límite de 1080p y 30 fps (48 fps pasa a 24, 60 a 30), subtítulos quemados con
+  tamaño uniforme (Pequeño / Normal / Grande / Muy grande), subtítulos automáticos
+  del archivo, audio a elección, retomar donde quedó.
+- Playlists: crear, renombrar, ordenar, mezclar y reproducir. Se agregan videos con el botón ♫ de la
+  biblioteca (o desde la ventana de opciones), y la cola actual se puede guardar como playlist.
+  Desde el celular se pueden reproducir o agregar a la cola.
+- Subtítulos externos: si junto al video hay un archivo .srt, .ass, .ssa o .vtt con el mismo nombre
+  (ej.: Pelicula.mkv + Pelicula.es.srt + Pelicula.en.srt), se detectan solos, también dentro de una
+  subcarpeta Subs / Subtitles. Aparecen en el selector marcados como "archivo externo" y el modo
+  automático elige el español (por el nombre: .es .spa .esp .spanish .latino .castellano).
+  Los acentos mal codificados (ISO-8859-1) se corrigen solos.
+- Sincronía de subtítulos: botones − y + junto al selector de tamaño (en la PC) o en el
+  reproductor (en el celular). Cada clic mueve 0,5 s (Mayús+clic en la PC: 0,1 s).
+  "+" hace que los subtítulos aparezcan más tarde, "−" más temprano. Clic sobre el valor
+  vuelve a 0. Se recuerda por video. El video se reinicia en el mismo punto para aplicarla.
+- Estilo de subtítulos: color del texto, caja de fondo (con opacidad), grosor del borde, sombra
+  y posición (abajo, un poco más arriba, al medio, arriba). Se cambia en Ajustes (PC, con vista
+  previa) o en el celular, en "Estilo de los subtítulos". Se aplica reiniciando el video en el
+  mismo punto. "Restablecer estilo" vuelve al blanco con borde fino.
+- Subtítulos ASS/SSA (típicos del anime, con carteles posicionados, colores y fuentes): por defecto se
+  respetan tal cual vienen (posición, tamaño, color y fuente, incluidas las fuentes incrustadas en el mkv).
+  En ese modo el tamaño y el estilo de Ajustes no se aplican a esos subtítulos. Si preferís un estilo
+  único para todo, Ajustes > Subtítulos > "Subtítulos con estilo (ASS)" > "Usar mi estilo".
+- Colores HDR: los videos HDR / Dolby Vision (con base HDR10) se convierten a SDR al transmitir, para que
+  no se vean grises y apagados. Usa más procesador; si un 4K HDR se corta, desactivalo en
+  Ajustes > Imagen y sonido > "Colores de videos HDR". Necesita un ffmpeg con los filtros zscale y tonemap
+  (los ffmpeg "full/essentials" de Windows los traen). Dolby Vision perfil 5 no se puede corregir bien.
+- Sonido: en Ajustes > Imagen y sonido. "Diálogos más claros" mezcla el 5.1 a estéreo subiendo las voces;
+  "Modo noche" además parejiza el volumen (explosiones menos fuertes, susurros más claros).
+- Continuar viendo: en la biblioteca (y en el celular) aparece lo que dejaste a medias, con barra de
+  progreso. El botón ✓ de cada video lo marca como visto / no visto; al terminar de ver un video se marca solo.
+- El selector de subtítulos muestra el tipo entre paréntesis, por ejemplo "spa (SRT)" o "spa (PGS · imagen)".
+- Subtítulos de imagen (PGS de Blu-ray, VobSub de DVD, DVB): se dibujan sobre el video tal como vienen
+  (posición y aspecto originales). La sincronía (− / +) funciona igual. El tamaño y el estilo de Ajustes
+  no se aplican a estos, porque son imágenes. En modo automático se prefieren los de texto y solo se usan
+  los de imagen si no hay otros. Si el video está en 4K, la imagen se reduce junto con el video.
+  (XSUB, un formato raro, no es compatible.)
+- Volumen: al reproducir por primera vez con un Chromecast, el programa lo pone al 50 % (para que no suene
+  al máximo). Después se mantiene el último volumen que ajustaste desde acá; la barra (PC, celular web y app)
+  no vuelve a 100 % al abrir el reproductor.
+- Control desde el celular: sigue funcionando con la dirección http://IP-de-la-PC:8099
+  (la dirección aparece en Ajustes > Control desde el celular).
+- Al cerrar la ventana, la app queda en la bandeja del sistema (junto al reloj) y
+  sigue transmitiendo. Para salir del todo: clic derecho en el ícono > Salir.
+
+REQUISITOS
+- Node.js instalado (el mismo que ya usás).
+- ffmpeg.exe y ffprobe.exe (los que ya tenés).
+
+PASO A PASO (en Windows)
+1) Descomprimí esta carpeta, por ejemplo en C:\mkvcast-desktop
+2) Copiá a esa misma carpeta: ffmpeg.exe, ffprobe.exe y tu config.json
+   (si no tenés config.json, copiá config.example.json como config.json y editá las carpetas;
+   también se pueden agregar después desde la pantalla Ajustes).
+3) Abrí una terminal en la carpeta y ejecutá:
+       npm install
+   (descarga Electron, unos 100 MB; la primera vez tarda)
+4) Para probar sin generar el exe:
+       npm start
+5) Para generar el programa portable:
+       npm run build
+   Queda en:  dist\MKVCast-2.0.0-portable.exe
+
+PROGRAMA PORTABLE (la carpeta que llevás a otra PC)
+   MKVCast-2.0.0-portable.exe
+   ffmpeg.exe
+   ffprobe.exe
+   config.json
+Junto al exe se crean solas las carpetas uploads, subs, thumbs y el archivo state.json.
+
+NOTAS
+- Cerrá mkvcast.exe (la versión anterior) antes de abrir esta: usan el mismo puerto (8099).
+- La primera vez que se abra en una PC, Windows pregunta por el Firewall: permitir en "redes privadas".
+- La PC, el celular y el Chromecast tienen que estar en la misma red wifi.
+- Si la dirección que muestra la app no es la de tu red (por ejemplo por VPN o máquinas virtuales),
+  escribí la IP correcta en Ajustes > "IP de esta PC".
+- El exe generado lleva el ícono por defecto de Electron en el archivo; la ventana y la bandeja
+  usan el ícono de MKVCast. (Se hace así para que la compilación no necesite permisos especiales.)
+- Los cambios de Ajustes se guardan en config.json. El puerto solo se cambia editando
+  config.json ("port") y reiniciando.
+
+SI ALGO FALLA
+- Ejecutá "npm start" desde una terminal: los errores y la velocidad de ffmpeg (speed=) se ven ahí.

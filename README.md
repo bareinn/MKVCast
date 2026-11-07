@@ -89,7 +89,7 @@ CAPTURAS: subí imágenes a la carpeta docs/screenshots/ del repositorio y desco
 | 🎞 **Transmisión** | HEVC/H.265 y otros códecs convertidos en vivo a H.264 High 4.1. Límite de 1080p y 30 fps (48 fps baja a 24, 60 a 30) |
 | ⚡ **Aceleración por GPU** | Usa NVENC (NVIDIA), QSV (Intel) o AMF (AMD) si los detecta; si no, la CPU |
 | 📚 **Biblioteca** | Carpetas, miniaturas, búsqueda, varias carpetas raíz y carpetas agregadas arrastrando |
-| 💬 **Subtítulos** | Embebidos y externos (`.srt`, `.ass`, `.ssa`, `.vtt`), selección automática, estilo personalizable, sincronía ± y ASS/SSA respetados |
+| 💬 **Subtítulos** | Embebidos y externos (`.srt`, `.ass`, `.ssa`, `.vtt`), PGS de Blu-ray y VobSub de DVD, selección automática, estilo personalizable, sincronía ± y ASS/SSA respetados |
 | 🔊 **Audio** | Elección de pista, "Diálogos más claros" y "Modo noche" |
 | 🌈 **HDR** | HDR / Dolby Vision (base HDR10) convertido a SDR para que los colores no se vean apagados |
 | 📋 **Cola y playlists** | Cola, playlists guardadas, mezclar, ordenar y renombrar |
@@ -181,6 +181,7 @@ Casi todo se cambia desde **Ajustes**, o editando `config.json`:
 |---|---|---|
 | `folders` | Carpetas con tus videos | — |
 | `gpu` | `auto`, `nvenc`, `qsv`, `amf` o `cpu` | `auto` |
+| `hwdecode` | Decodificar también con la GPU (`true` / `false`). Solo se usa si el codificador es una GPU; desactivala si algún video da cortes o errores | `true` |
 | `maxHeight` | Alto máximo de salida | `1080` |
 | `maxFps` | Cuadros por segundo máximos | `30` |
 | `port` | Puerto del servidor | `8099` |
@@ -282,9 +283,16 @@ Color del texto, caja de fondo con opacidad, grosor del borde, sombra y posició
 
 Por defecto se **respetan tal cual vienen**: posición, tamaño, colores y fuentes, incluidas las fuentes incrustadas en el MKV. Así los carteles posicionados y los efectos se ven como los hizo el autor. Si preferís un estilo único para todo: *Ajustes → Subtítulos → Subtítulos con estilo (ASS) → Usar mi estilo*.
 
-### Subtítulos de imagen (PGS, VobSub)
+### Subtítulos de imagen (PGS, VobSub, DVB)
 
-No se pueden mostrar. Aparecen deshabilitados en el selector y el modo automático no los elige.
+Los subtítulos de imagen de los Blu-ray (**PGS**) y de los DVD (**VobSub**) se dibujan sobre el video tal como vienen, con su posición y aspecto originales. En el selector aparecen como `spa (PGS · imagen)`.
+
+- La **sincronía** (− / +) funciona igual que con los de texto.
+- El **tamaño y el estilo** de Ajustes no se aplican, porque son imágenes y no texto.
+- En modo **automático** se prefieren los de texto; los de imagen se usan solo si no hay otros.
+- Si el video es 4K, el subtítulo se reduce junto con el video a 1080p.
+- Usan algo más de procesador, aunque el costo es bajo frente al de convertir el video.
+- XSUB, un formato poco común, no es compatible.
 
 ---
 
@@ -326,7 +334,7 @@ No se pueden mostrar. Aparecen deshabilitados en el selector y el modo automáti
 | Error de puerto en uso | Cerrá otra copia de MKVCast, o cambiá `port` en `config.json` |
 | Microcortes en 4K | Ejecutá `npm start` y mirá la velocidad `speed=` de ffmpeg; si es menor a `1.0x`, la PC no alcanza a convertir en tiempo real. Desactivá la corrección HDR o bajá `maxHeight` |
 | Colores grises en HDR | Activá *Colores de videos HDR* y usá un ffmpeg con `zscale` y `tonemap` |
-| Subtítulos de imagen | PGS y VobSub no se pueden mostrar; usá una versión con subtítulos de texto |
+| Subtítulo PGS que no aparece | Elegilo en el selector (modo automático prefiere los de texto). Si no se ve, ejecutá `npm start` y revisá los errores de ffmpeg; probá con otra pista |
 | Los botones de volumen mueven el volumen del celular | Solo controlan el Chromecast con la app abierta y un video reproduciéndose |
 
 Para ver errores y la velocidad de ffmpeg, ejecutá `npm start` desde una terminal.
@@ -365,7 +373,7 @@ Todo lo que hace el celular pasa por una API HTTP simple, útil si querés hacer
 - Solo Windows en la versión portable; el servidor Node.js podría correr en otros sistemas, pero no está probado.
 - La conversión en vivo depende de la potencia de la PC. Los 4K HDR con corrección de color son lo más exigente.
 - Dolby Vision perfil 5 no se corrige bien.
-- Los subtítulos de imagen (PGS / VobSub) no se pueden mostrar.
+- En los subtítulos de imagen (PGS / VobSub) no se puede cambiar el tamaño ni el estilo.
 - Si cambiás el volumen con el control remoto de la TV, la barra de MKVCast no se entera.
 - Solo funciona dentro de la misma red local (o con VPN).
 - La resolución máxima, los fps y la GPU se cambian desde *Ajustes* en la PC, no desde el celular.

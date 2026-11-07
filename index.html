@@ -110,11 +110,11 @@ function openDir(i){cur={r:cur.r,p:(cur.p?cur.p+'/':'')+curDirs[i]};browse()}
 function up(){if(cur.r===null)return;if(!cur.p)cur={r:null,p:''};else cur.p=cur.p.split(/[\\/]/).slice(0,-1).join('/');browse()}
 function pickIdx(i){const f=curFiles[i];if(f)pick(f.p)}
 function closeOpts(){$('opts').style.display='none'}
-const IMG_SUB=/^(hdmv_pgs_subtitle|dvd_subtitle|dvb_subtitle|xsub)$/i;
+const IMG_SUB=/^(xsub)$/i;const BITMAP_SUB=/^(hdmv_pgs_subtitle|dvd_subtitle|dvb_subtitle)$/i;
 const SUB_KIND={subrip:'SRT',srt:'SRT',ass:'ASS',ssa:'SSA',mov_text:'texto',webvtt:'VTT',text:'texto',hdmv_pgs_subtitle:'PGS · imagen',dvd_subtitle:'VobSub · imagen',dvb_subtitle:'DVB · imagen',xsub:'imagen'};
 const subKind=s=>s.ext?(s.title||'').split('.').pop().toUpperCase():(SUB_KIND[(s.codec||'').toLowerCase()]||s.codec||'?');
 const subLabel=s=>`${s.lang||'?'} ${s.title||''} (${subKind(s)})${s.def?' · predet.':''}${s.forced?' · forzado':''}${s.ext?' · externo':''}${IMG_SUB.test(s.codec||'')?' · no compatible':''}`.replace(/\s+/g,' ');
-function defSub(subs){if(S.settings&&!S.settings.autoSub)return -1;subs=subs.filter(x=>!IMG_SUB.test(x.codec||''));const t=subs.find(x=>x.def)||subs.find(x=>x.forced)||subs.find(x=>/^(spa|es)/.test(x.lang||''));return t?t.i:-1}
+function defSub(subs){if(S.settings&&!S.settings.autoSub)return -1;subs=subs.filter(x=>!IMG_SUB.test(x.codec||''));const pick=l=>l.find(x=>x.def)||l.find(x=>x.forced)||l.find(x=>/^(spa|es)/.test(x.lang||''));const t=pick(subs.filter(x=>!BITMAP_SUB.test(x.codec||'')))||pick(subs.filter(x=>BITMAP_SUB.test(x.codec||'')));return t?t.i:-1}
 async function recPlay(i){const x=(S.recent||[])[i];if(!x)return;await api('/api/play',{r:x.r,p:x.p});poll()}
 async function recDel(i){const x=(S.recent||[])[i];if(!x)return;await api('/api/recent',{r:x.r,p:x.p});poll()}
 async function setAV(){await api('/api/settings',{hdrFix:$('shdr').value=='1',audioMode:$('saud').value});

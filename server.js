@@ -504,12 +504,21 @@ function prepareExtSub(file) {
 }
 
 // Subtítulo por defecto del archivo: el marcado como predeterminado, si no el forzado, si no el español
-const IMG_SUB_RE = /^(hdmv_pgs_subtitle|dvd_subtitle|dvb_subtitle|xsub)$/i;   // subtítulos de imagen: no se pueden mostrar
+// Subtítulos de imagen (PGS de Blu-ray, VobSub de DVD, DVB): se superponen al video con ffmpeg (overlay).
+// XSUB no tiene decodificador utilizable, así que ese no se ofrece.
+const IMG_SUB_RE = /^(hdmv_pgs_subtitle|dvd_subtitle|dvb_subtitle)$/i;
+const NOSUPPORT_SUB_RE = /^(xsub)$/i;
+function pickDefaultSub(subs) {
+  return subs.find(function(x) { return x.def; }) ||
+         subs.find(function(x) { return x.forced; }) ||
+         subs.find(function(x) { return /^(spa|es)/i.test(x.lang || ''); });
+}
+// Automático: primero los de texto (más livianos y con estilo propio) y, si no hay, los de imagen
 function defaultSub(info) {
-  const subs = (info.subs || []).filter(function(x) { return !IMG_SUB_RE.test(x.codec || ''); });
-  const t = subs.find(function(x) { return x.def; }) ||
-            subs.find(function(x) { return x.forced; }) ||
-            subs.find(function(x) { return /^(spa|es)/i.test(x.lang || ''); });
+  const all = (info.subs || []).filter(function(x) { return !NOSUPPORT_SUB_RE.test(x.codec || ''); });
+  const txt = all.filter(function(x) { return !IMG_SUB_RE.test(x.codec || ''); });
+  const img = all.filter(function(x) { return IMG_SUB_RE.test(x.codec || ''); });
+  const t = pickDefaultSub(txt) || pickDefaultSub(img);
   return t ? t.i : -1;
 }
 
@@ -675,20 +684,26 @@ const server = http.createServer(async function(req, res) {
       let targetFps = 0;
       if (info.fps > MAX_FPS + 0.5) targetFps = info.fps / Math.ceil(info.fps / MAX_FPS);
       const needScale = info.height > MAX_HEIGHT;
-      let subName = null, subAss = false, fontsRel = null;
+      let subName = null, subAss = false, fontsRel = null, imgSub = false;
       if (s >= 0) {
         const sb = subsOf(full, info)[s];
-        subAss = respectAss(sb);
-        if (sb && sb.ext) subName = await prepareExtSub(sb.file);
-        else if (sb) subName = await extractSub(full, s, subAss);
-        if (subName && subAss && !sb.ext) fontsRel = await extractFonts(full);
+        if (sb && !sb.ext && IMG_SUB_RE.test(sb.codec || '')) {
+          imgSub = true;   // PGS / VobSub / DVB: se dibuja con overlay, no hay archivo que extraer
+        } else {
+          subAss = respectAss(sb);
+          if (sb && sb.ext) subName = await prepareExtSub(sb.file);
+          else if (sb) subName = await extractSub(full, s, subAss);
+          if (subName && subAss && !sb.ext) fontsRel = await extractFonts(full);
+        }
       }
       // Sincronía: con +, los subtítulos aparecen más tarde; con −, más temprano
       const subDelay = saved.subDelays[parseInt(q.get('r') || '0', 10) + '|' + q.get('p')] || 0;
       const args = ['-v', 'error', '-stats', '-nostdin'];
       if (encoder !== 'cpu' && cfg.hwdecode !== false && !copyV) args.push('-hwaccel', 'auto');
       if (t > 0) args.push('-ss', String(t));
-      args.push('-i', full, '-map', '0:v:0', '-map', '0:a:' + a + '?');
+      args.push('-i', full);
+      if (!(imgSub && !copyV)) args.push('-map', '0:v:0');
+      args.push('-map', '0:a:' + a + '?');
       if (copyV) {
         args.push('-c:v', 'copy');
       } else {
@@ -706,8 +721,18 @@ const server = http.createServer(async function(req, res) {
           const subOpts = subAss ? (fontsRel ? ':fontsdir=' + fontsRel : '') : ":force_style='" + forceStyle(fontSize) + "'";
           filters.push('setpts=PTS+(' + (t - subDelay).toFixed(3) + ')/TB', 'subtitles=' + subName + subOpts, 'setpts=PTS-STARTPTS');
         }
-        if (targetFps) filters.push('fps=' + targetFps.toFixed(3));
-        if (filters.length) args.push('-vf', filters.join(','));
+        if (imgSub) {
+          // Subtítulo de imagen: se escala al ancho del video ya reducido y se pega abajo, centrado.
+          // La sincronía mueve el flujo de subtítulos: con +, aparecen más tarde.
+          const vw = needScale ? Math.max(2, Math.round(info.width * MAX_HEIGHT / info.height / 2) * 2) : info.width;
+          let g = '[0:v:0]' + (filters.length ? filters.join(',') : 'null') + '[v0];[0:s:' + s + ']scale=' + vw + ':-2';
+          if (subDelay) g += ',setpts=PTS+(' + subDelay.toFixed(3) + ')/TB';
+          g += '[sb];[v0][sb]overlay=x=(W-w)/2:y=H-h:eof_action=pass' + (targetFps ? ',fps=' + targetFps.toFixed(3) : '') + '[vout]';
+          args.push('-filter_complex', g, '-map', '[vout]');
+        } else {
+          if (targetFps) filters.push('fps=' + targetFps.toFixed(3));
+          if (filters.length) args.push('-vf', filters.join(','));
+        }
         args.push.apply(args, ENCODERS[encoder]);
         args.push.apply(args, PROFILE_ARGS[encoder]);
         args.push('-pix_fmt', 'yuv420p');
