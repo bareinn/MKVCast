@@ -95,7 +95,8 @@ CAPTURAS: subí imágenes a la carpeta docs/screenshots/ del repositorio y desco
 | 📋 **Cola y playlists** | Cola, playlists guardadas, mezclar, ordenar y renombrar |
 | ▶ **Continuar viendo** | Retoma donde dejaste, marca videos vistos y muestra lo que quedó a medias |
 | 📱 **Control remoto** | Web móvil y app Android con la misma funcionalidad |
-| 🔘 **Botones de volumen** | En la app Android, los botones físicos controlan el volumen del Chromecast |
+| 🔘 **Botones de volumen** | En la app Android, los botones físicos controlan el volumen del Chromecast, también con la pantalla apagada |
+| 🔔 **Notificación multimedia** | Controles en la barra de notificaciones y la pantalla de bloqueo: pausa, ±10 s, capítulo anterior/siguiente, barra de progreso y volumen |
 | 📤 **Subir archivos** | Mandá un video del celular a la PC para reproducirlo |
 | 🗂 **Bandeja del sistema** | Sigue transmitiendo con la ventana cerrada |
 
@@ -226,17 +227,34 @@ No hay nada que instalar. Se abre en el navegador de cualquier teléfono.
 
 ### Opción 2: app Android
 
-App nativa con la misma funcionalidad y un diseño pensado para el celular (Android 7 o superior). Recuerda la dirección del servidor y el PIN, y se actualiza sola mientras está abierta.
+App nativa con la misma funcionalidad y un diseño pensado para el celular (Android 7 o superior). Recuerda la dirección del servidor y el PIN, se actualiza sola y sigue controlando la reproducción con la app en segundo plano o con la pantalla apagada (ver [Notificación multimedia](#notificación-multimedia-app-android)).
 
 Descargá `MKVCast.apk` desde [Releases](https://github.com/bareinn/MKVCast/releases/latest), instalalo (hay que permitir orígenes desconocidos) y escribí la dirección del programa de la PC. El código fuente está en la carpeta [`android/`](android/).
+
+### Notificación multimedia (app Android)
+
+Mientras hay algo reproduciéndose, la app muestra una **notificación de reproducción** como la de Netflix, Disney+ o HBO Max. Funciona con la app en segundo plano, con la pantalla apagada y en la pantalla de bloqueo:
+
+- **Título del video**, nombre del Chromecast y **carátula**.
+- **Barra de progreso** con la posición y la duración reales. Se puede **arrastrar** para saltar a otro momento.
+- **Pausa/reproducir**, **−10 s / +10 s**, **capítulo anterior / siguiente** (si hay más videos en la cola) y **Cortar transmisión**.
+- **Botones físicos de volumen**: con la pantalla apagada o la app minimizada, suben y bajan el volumen **del Chromecast** (de a 5 %), no el del celular.
+- Al tocar la notificación se abre la app en el reproductor.
+
+Detalles:
+
+- En Android 13 o superior, la app pide permiso para mostrar notificaciones la primera vez que reproducís algo.
+- La notificación aparece cuando empieza la reproducción y desaparece al terminar o al cortar la transmisión. En pausa se puede descartar deslizándola; eso **no** corta lo que está en el Chromecast.
+- Si el sistema cierra la notificación con la pantalla apagada (pasa en algunos celulares con ahorro de batería agresivo), desactivá la optimización de batería para MKVCast desde *Ajustes* en la app.
+- Con capítulo anterior **y** siguiente a la vez, Android solo deja mostrar cinco botones, así que se ocultan los de ±10 s (para eso está la barra).
 
 ### Qué se puede hacer desde el celular
 
 - **Elegir el Chromecast** al que transmitir.
 - **Explorar la biblioteca** de la PC con miniaturas y ver *Continuar viendo* (la búsqueda está en la app Android).
 - **Reproducir** un video, eligiendo pista de audio y subtítulo antes de empezar.
-- **Controlar la reproducción**: pausa, ±30 segundos, anterior/siguiente y barra de progreso.
-- **Volumen** con barra propia. En la app Android también con los **botones físicos del celular**, mientras la app está abierta y hay algo reproduciéndose. El programa arranca al 50 % para que no suene al máximo.
+- **Controlar la reproducción**: pausa, ±30 segundos, anterior/siguiente y barra de progreso. En la app Android, también desde la **notificación** y la pantalla de bloqueo.
+- **Volumen** con barra propia. En la app Android también con los **botones físicos del celular**, tanto con la app abierta como en segundo plano o con la pantalla apagada (mientras haya algo reproduciéndose). El programa arranca al 50 % para que no suene al máximo.
 - **Subtítulos en vivo**: tamaño, estilo (color, fondo, borde, sombra, posición) y sincronía − / +.
 - **Gestionar la cola y las playlists**.
 - **Marcar** videos como vistos o no vistos.
@@ -248,7 +266,6 @@ Descargá `MKVCast.apk` desde [Releases](https://github.com/bareinn/MKVCast/rele
 - No reproduce el video en el celular.
 - No funciona fuera de tu red wifi, a menos que uses una VPN (WireGuard, Tailscale) hacia tu PC.
 - No cambia la resolución máxima ni los fps: eso se ajusta desde *Ajustes* en el programa de la PC (o en `config.json`).
-- Los botones físicos de volumen no controlan el Chromecast con la pantalla apagada o la app en segundo plano.
 
 ---
 
@@ -335,7 +352,8 @@ Los subtítulos de imagen de los Blu-ray (**PGS**) y de los DVD (**VobSub**) se 
 | Microcortes en 4K | Ejecutá `npm start` y mirá la velocidad `speed=` de ffmpeg; si es menor a `1.0x`, la PC no alcanza a convertir en tiempo real. Desactivá la corrección HDR o bajá `maxHeight` |
 | Colores grises en HDR | Activá *Colores de videos HDR* y usá un ffmpeg con `zscale` y `tonemap` |
 | Subtítulo PGS que no aparece | Elegilo en el selector (modo automático prefiere los de texto). Si no se ve, ejecutá `npm start` y revisá los errores de ffmpeg; probá con otra pista |
-| Los botones de volumen mueven el volumen del celular | Solo controlan el Chromecast con la app abierta y un video reproduciéndose |
+| Los botones de volumen mueven el volumen del celular | Solo controlan el Chromecast mientras hay un video reproduciéndose o en pausa. Si no hay nada reproduciéndose, el celular maneja su propio volumen |
+| La notificación desaparece con la pantalla apagada | Desactivá la optimización de batería para MKVCast (*Ajustes* de la app) y permití las notificaciones |
 
 Para ver errores y la velocidad de ffmpeg, ejecutá `npm start` desde una terminal.
 
