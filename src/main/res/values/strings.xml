@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">MKVCast</string>
+    <string name="notification_channel_name">Reproducción de MKVCast</string>
+    <string name="notification_channel_desc">Controles multimedia y volumen del Chromecast</string>
+    <string name="notification_permission_rationale">Para controlar la reproducción y el volumen con la pantalla bloqueada, permití las notificaciones de MKVCast.</string>
+</resources>
