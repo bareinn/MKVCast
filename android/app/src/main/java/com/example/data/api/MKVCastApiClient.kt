@@ -54,6 +54,20 @@ class MKVCastApiClient(
         return "$base/api/thumb?r=$r&p=$encodedP"
     }
 
+    suspend fun fetchThumbnailBytes(r: Int, p: String): ByteArray? = withContext(Dispatchers.IO) {
+        val url = getThumbnailUrl(r, p)
+        if (url.isEmpty()) return@withContext null
+        try {
+            val request = newRequestBuilder(url).get().build()
+            val response = okHttpClient.newCall(request).execute()
+            if (response.isSuccessful) {
+                response.body?.bytes()
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun newRequestBuilder(url: String): Request.Builder {
         val builder = Request.Builder().url(url)
         val currentToken = preferences.token

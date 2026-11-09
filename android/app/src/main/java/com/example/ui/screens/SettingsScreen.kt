@@ -43,6 +43,14 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -640,6 +648,77 @@ fun SettingsScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Section: Battery Optimization Suggestion
+        item {
+            val context = LocalContext.current
+            val isIgnoringBatteryOptimizations = remember {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                    pm?.isIgnoringBatteryOptimizations(context.packageName) == true
+                } else true
+            }
+
+            if (!isIgnoringBatteryOptimizations) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = AirflowPanel),
+                    border = BorderStroke(1.dp, Color(0x66FFB74D)),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.BatteryAlert,
+                                contentDescription = null,
+                                tint = Color(0xFFFFB74D),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Optimización de batería",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AirflowText
+                            )
+                        }
+
+                        Text(
+                            text = "Para que la notificación y el control remoto sigan respondiendo sin interrupciones con la pantalla apagada o bloqueada, podés permitir que MKVCast funcione en segundo plano.",
+                            fontSize = 13.sp,
+                            color = AirflowTextSecondary,
+                            lineHeight = 18.sp
+                        )
+
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                            data = Uri.parse("package:${context.packageName}")
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                } catch (e: Exception) {
+                                    try {
+                                        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                                    } catch (ex: Exception) {}
+                                }
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFB74D)),
+                            border = BorderStroke(1.dp, Color(0xFFFFB74D)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Desactivar optimización de batería", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

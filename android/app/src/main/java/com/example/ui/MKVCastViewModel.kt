@@ -20,6 +20,7 @@ import com.example.data.model.SubtitleTrack
 import com.example.data.model.VideoFile
 import com.example.data.model.VideoInfo
 import com.example.data.model.pickDefaultSubtitle
+import com.example.data.repository.PlaybackRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,23 +45,17 @@ data class Breadcrumb(
 )
 
 class MKVCastViewModel(application: Application) : AndroidViewModel(application) {
-    val preferences = ServerPreferences(application)
-    val apiClient = MKVCastApiClient(preferences)
+    val repository = PlaybackRepository.getInstance(application)
 
-    private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
-    val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
+    val preferences: ServerPreferences get() = repository.preferences
+    val apiClient: MKVCastApiClient get() = repository.apiClient
 
-    private val _serverState = MutableStateFlow<ServerState?>(null)
-    val serverState: StateFlow<ServerState?> = _serverState.asStateFlow()
-
-    private val _isServerReachable = MutableStateFlow(true)
-    val isServerReachable: StateFlow<Boolean> = _isServerReachable.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    private val _userMessage = MutableStateFlow<String?>(null)
-    val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
+    val connectionStatus: StateFlow<ConnectionStatus> = repository.connectionStatus
+    val serverState: StateFlow<ServerState?> = repository.serverState
+    val isServerReachable: StateFlow<Boolean> = repository.isServerReachable
+    val errorMessage: StateFlow<String?> = repository.errorMessage
+    val userMessage: StateFlow<String?> = repository.userMessage
+    val uiVolume: StateFlow<Float?> = repository.uiVolume
 
     // Library explorer state
     private val _currentFolderIndex = MutableStateFlow<Int?>(null)
@@ -108,102 +103,20 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     private val _pendingSubDelay = MutableStateFlow<Double?>(null)
     val pendingSubDelay: StateFlow<Double?> = _pendingSubDelay.asStateFlow()
 
-    private val _uiVolume = MutableStateFlow<Float?>(null)
-    val uiVolume: StateFlow<Float?> = _uiVolume.asStateFlow()
-    private var volumeResetJob: Job? = null
-
-    // Polling job
-    private var pollingJob: Job? = null
-    private var isAppForeground = true
-
-    init {
-        // If serverUrl was previously saved, attempt auto-connection
-        if (preferences.serverUrl.isNotBlank()) {
-            connectServer(preferences.serverUrl, preferences.lastPin)
-        }
-    }
-
     fun setAppForeground(foreground: Boolean) {
-        isAppForeground = foreground
-        if (foreground) {
-            startPolling()
-        } else {
-            stopPolling()
-        }
+        repository.setAppForeground(foreground)
     }
 
     fun connectServer(rawUrl: String, pin: String = "") {
-        val normalized = ServerPreferences.normalizeUrl(rawUrl)
-        if (normalized.isBlank()) {
-            _errorMessage.value = "Por favor ingresá la dirección de la PC (ej: 192.168.1.20:8099)"
-            _connectionStatus.value = ConnectionStatus.ERROR
-            return
-        }
-
-        preferences.serverUrl = normalized
-        _connectionStatus.value = ConnectionStatus.CONNECTING
-        _errorMessage.value = null
-
-        viewModelScope.launch {
-            // First check if a PIN login is needed
-            if (pin.isNotBlank()) {
-                val loginRes = apiClient.login(pin)
-                if (loginRes.isFailure) {
-                    val ex = loginRes.exceptionOrNull()
-                    if (ex is AuthException) {
-                        _connectionStatus.value = ConnectionStatus.AUTH_REQUIRED
-                        _errorMessage.value = "PIN incorrecto. Por favor ingresá el PIN configurado en MKVCast."
-                        return@launch
-                    }
-                }
-            }
-
-            val stateRes = apiClient.getState()
-            if (stateRes.isSuccess) {
-                _serverState.value = stateRes.getOrNull()
-                _connectionStatus.value = ConnectionStatus.CONNECTED
-                _isServerReachable.value = true
-                startPolling()
-            } else {
-                val ex = stateRes.exceptionOrNull()
-                if (ex is AuthException) {
-                    _connectionStatus.value = ConnectionStatus.AUTH_REQUIRED
-                    _errorMessage.value = "Este servidor requiere PIN de acceso."
-                } else {
-                    _connectionStatus.value = ConnectionStatus.ERROR
-                    _errorMessage.value = "No pude conectar con $normalized. Verificá que la PC esté encendida, que MKVCast esté abierto y que estén en la misma red wifi."
-                }
-            }
-        }
+        repository.connectServer(rawUrl, pin)
     }
 
     fun submitPin(pin: String) {
-        viewModelScope.launch {
-            _connectionStatus.value = ConnectionStatus.CONNECTING
-            val loginRes = apiClient.login(pin)
-            if (loginRes.isSuccess) {
-                val stateRes = apiClient.getState()
-                if (stateRes.isSuccess) {
-                    _serverState.value = stateRes.getOrNull()
-                    _connectionStatus.value = ConnectionStatus.CONNECTED
-                    _isServerReachable.value = true
-                    startPolling()
-                } else {
-                    _connectionStatus.value = ConnectionStatus.ERROR
-                    _errorMessage.value = "Error al obtener estado del servidor."
-                }
-            } else {
-                _connectionStatus.value = ConnectionStatus.AUTH_REQUIRED
-                _errorMessage.value = "PIN incorrecto. Intentá nuevamente."
-            }
-        }
+        repository.submitPin(pin)
     }
 
     fun disconnect() {
-        stopPolling()
-        preferences.clearAuth()
-        _serverState.value = null
-        _connectionStatus.value = ConnectionStatus.DISCONNECTED
+        repository.disconnect()
         _currentFolderIndex.value = null
         _currentFolderPath.value = ""
         _breadcrumbs.value = emptyList()
@@ -211,45 +124,15 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun dismissError() {
-        _errorMessage.value = null
+        repository.dismissError()
     }
 
     fun dismissUserMessage() {
-        _userMessage.value = null
+        repository.dismissUserMessage()
     }
 
     fun setPlayerExpanded(expanded: Boolean) {
         _isPlayerExpanded.value = expanded
-    }
-
-    private fun startPolling() {
-        stopPolling()
-        pollingJob = viewModelScope.launch {
-            while (true) {
-                if (isAppForeground && _connectionStatus.value == ConnectionStatus.CONNECTED) {
-                    val stateRes = apiClient.getState()
-                    if (stateRes.isSuccess) {
-                        _serverState.value = stateRes.getOrNull()
-                        _isServerReachable.value = true
-                    } else {
-                        val ex = stateRes.exceptionOrNull()
-                        if (ex is AuthException) {
-                            _connectionStatus.value = ConnectionStatus.AUTH_REQUIRED
-                            _errorMessage.value = "La sesión expiró o se requiere PIN."
-                            break
-                        } else {
-                            _isServerReachable.value = false
-                        }
-                    }
-                }
-                delay(2000)
-            }
-        }
-    }
-
-    private fun stopPolling() {
-        pollingJob?.cancel()
-        pollingJob = null
     }
 
     // --- Library & Navigation ---
@@ -283,7 +166,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun updateBreadcrumbs(r: Int, path: String) {
-        val state = _serverState.value ?: return
+        val state = serverState.value ?: return
         val rootName = if (r in state.folders.indices) {
             if (r == state.uploadsIdx) "Soltados" else state.folders[r].replace('\\', '/').substringAfterLast('/').ifBlank { state.folders[r] }
         } else "Carpeta $r"
@@ -307,7 +190,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             if (res.isSuccess) {
                 _currentFolderContent.value = res.getOrNull() ?: FolderContent()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al cargar carpeta"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al cargar carpeta")
             }
             _isFolderLoading.value = false
         }
@@ -330,7 +213,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             if (res.isSuccess) {
                 _optionsVideoInfo.value = res.getOrNull()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al obtener info del video"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al obtener info del video")
             }
             _isLoadingInfo.value = false
         }
@@ -349,90 +232,52 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     // --- Controls & Playback ---
 
     fun playVideo(r: Int, p: String, audio: Int? = null, sub: Int? = null, start: Double? = null) {
-        viewModelScope.launch {
-            val res = apiClient.play(r, p, audio, sub, start)
-            if (res.isFailure) {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al iniciar reproducción"
-            } else {
-                refreshStateImmediately()
-            }
-        }
+        repository.playVideo(r, p, audio, sub, start)
     }
 
     fun resumeVideo(r: Int, p: String) {
-        playVideo(r, p)
+        repository.resumeVideo(r, p)
     }
 
     fun togglePlayPause() {
-        val status = _serverState.value?.status ?: return
-        val cmd = if (status.isPlaying) "pause" else "resume"
-        viewModelScope.launch {
-            apiClient.control(cmd)
-            refreshStateImmediately()
-        }
+        repository.togglePlayPause()
     }
 
     fun stopPlayback() {
-        viewModelScope.launch {
-            apiClient.control("stop")
-            _isPlayerExpanded.value = false
-            refreshStateImmediately()
-        }
+        _isPlayerExpanded.value = false
+        repository.stopPlayback()
     }
 
     fun skipPrevious() {
-        viewModelScope.launch {
-            apiClient.control("prev")
-            refreshStateImmediately()
-        }
+        repository.skipPrevious()
     }
 
     fun skipNext() {
-        viewModelScope.launch {
-            apiClient.control("next")
-            refreshStateImmediately()
-        }
+        repository.skipNext()
     }
 
     fun seekRelative(secondsDelta: Double) {
-        val currentPos = _serverState.value?.status?.pos ?: 0.0
-        val target = (currentPos + secondsDelta).coerceAtLeast(0.0)
-        seekTo(target)
+        repository.seekRelative(secondsDelta)
     }
 
     fun seekTo(seconds: Double) {
-        viewModelScope.launch {
-            apiClient.control("seek", to = seconds)
-            refreshStateImmediately()
-        }
+        repository.seekTo(seconds)
     }
 
     fun setVolume(volume: Float) {
-        viewModelScope.launch {
-            apiClient.control("volume", value = volume.toDouble().coerceIn(0.0, 1.0))
-        }
+        repository.setVolume(volume)
     }
 
-    fun shouldHandleVolumeKeys(): Boolean =
-        _serverState.value?.now != null &&
-        _connectionStatus.value == ConnectionStatus.CONNECTED
+    fun shouldHandleVolumeKeys(): Boolean = repository.shouldHandleVolumeKeys()
 
     fun changeVolume(delta: Float) {
-        val base = _uiVolume.value ?: _serverState.value?.status?.volume ?: 0.5f
-        val next = (base + delta).coerceIn(0f, 1f)
-        _uiVolume.value = next
-        setVolume(next)
-        volumeResetJob?.cancel()
-        volumeResetJob = viewModelScope.launch {
-            delay(3000)
-            _uiVolume.value = null
-        }
+        repository.changeVolume(delta)
     }
 
     // --- Subtitle Sync with Debounce ---
 
     fun adjustSubDelay(delta: Double) {
-        val current = _pendingSubDelay.value ?: _serverState.value?.now?.delay ?: 0.0
+        val current = _pendingSubDelay.value ?: serverState.value?.now?.delay ?: 0.0
         val next = (current + delta).coerceIn(-60.0, 60.0)
         _pendingSubDelay.value = next
 
@@ -441,7 +286,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             delay(700)
             apiClient.subDelay(value = next)
             _pendingSubDelay.value = null
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -450,7 +295,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
         _pendingSubDelay.value = null
         viewModelScope.launch {
             apiClient.subDelay(reset = true)
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -460,10 +305,10 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val res = apiClient.queue("add", r = r, p = p)
             if (res.isSuccess) {
-                _userMessage.value = "Agregado a la cola"
-                refreshStateImmediately()
+                repository.showUserMessage("Agregado a la cola")
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al agregar a la cola"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al agregar a la cola")
             }
         }
     }
@@ -471,14 +316,14 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
     fun removeFromQueue(index: Int) {
         viewModelScope.launch {
             apiClient.queue("remove", i = index)
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
     fun clearQueue() {
         viewModelScope.launch {
             apiClient.queue("clear")
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -491,10 +336,10 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             }
             val res = apiClient.playlistAction(payload)
             if (res.isSuccess) {
-                _userMessage.value = "Playlist guardada"
-                refreshStateImmediately()
+                repository.showUserMessage("Playlist guardada")
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al guardar playlist"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al guardar playlist")
             }
         }
     }
@@ -527,11 +372,11 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             }
             val res = apiClient.playlistAction(payload)
             if (res.isSuccess) {
-                _userMessage.value = "Playlist creada"
+                repository.showUserMessage("Playlist creada")
                 closeAddToPlaylist()
-                refreshStateImmediately()
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al crear playlist"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al crear playlist")
             }
         }
     }
@@ -546,11 +391,11 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             }
             val res = apiClient.playlistAction(payload)
             if (res.isSuccess) {
-                _userMessage.value = "Video agregado a la playlist"
+                repository.showUserMessage("Video agregado a la playlist")
                 closeAddToPlaylist()
-                refreshStateImmediately()
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al agregar video a playlist"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al agregar video a playlist")
             }
         }
     }
@@ -562,7 +407,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
                 put("id", playlistId)
             }
             apiClient.playlistAction(payload)
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -575,7 +420,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
                 put("name", newName.trim())
             }
             apiClient.playlistAction(payload)
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -587,7 +432,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
                 put("i", index)
             }
             apiClient.playlistAction(payload)
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -600,7 +445,7 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
                 put("to", toIndex)
             }
             apiClient.playlistAction(payload)
-            refreshStateImmediately()
+            repository.refreshStateImmediately()
         }
     }
 
@@ -615,10 +460,10 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             }
             val res = apiClient.playlistAction(payload)
             if (res.isSuccess) {
-                _userMessage.value = if (shuffle) "Reproduciendo playlist mezclada 🔀" else "Cargando playlist..."
-                refreshStateImmediately()
+                repository.showUserMessage(if (shuffle) "Reproduciendo playlist mezclada 🔀" else "Cargando playlist...")
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al cargar playlist"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al cargar playlist")
             }
         }
     }
@@ -630,9 +475,9 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
             val res = apiClient.setSeen(r, p, !currentSeen)
             if (res.isSuccess) {
                 refreshCurrentFolder()
-                refreshStateImmediately()
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al cambiar estado visto"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al cambiar estado visto")
             }
         }
     }
@@ -641,9 +486,9 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val res = apiClient.removeRecent(r, p)
             if (res.isSuccess) {
-                refreshStateImmediately()
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al quitar de recientes"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al quitar de recientes")
             }
         }
     }
@@ -654,29 +499,28 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val res = apiClient.setDevice(deviceName)
             if (res.isSuccess) {
-                _userMessage.value = "Dispositivo seleccionado: $deviceName"
-                refreshStateImmediately()
+                repository.showUserMessage("Dispositivo seleccionado: $deviceName")
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al cambiar de dispositivo"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al cambiar de dispositivo")
             }
         }
     }
 
     fun updateSettings(newSettings: ServerSettings) {
-        val currentPos = _serverState.value?.status?.pos ?: 0.0
-        val isVideoPlaying = _serverState.value?.now != null
+        val currentPos = serverState.value?.status?.pos ?: 0.0
+        val isVideoPlaying = serverState.value?.now != null
 
         viewModelScope.launch {
             val res = apiClient.updateSettings(newSettings)
             if (res.isSuccess) {
-                // If a video is playing, send seek to status.pos as MKVCast web does
                 if (isVideoPlaying && currentPos > 0) {
                     delay(300)
                     apiClient.control("seek", to = currentPos)
                 }
-                refreshStateImmediately()
+                repository.refreshStateImmediately()
             } else {
-                _errorMessage.value = res.exceptionOrNull()?.message ?: "Error al actualizar ajustes"
+                repository.showErrorMessage(res.exceptionOrNull()?.message ?: "Error al actualizar ajustes")
             }
         }
     }
@@ -700,67 +544,53 @@ class MKVCastViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
 
-                // Check extension
                 val ext = fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
                 val allowedExtensions = listOf("mkv", "mp4", "avi", "mov", "m4v", "webm")
                 if (ext !in allowedExtensions) {
-                    _errorMessage.value = "Formato no compatible ($ext). Formatos permitidos: mkv, mp4, avi, mov, m4v, webm."
+                    repository.showErrorMessage("Formato no compatible ($ext). Formatos permitidos: mkv, mp4, avi, mov, m4v, webm.")
                     _isUploading.value = false
                     return@launch
                 }
 
-                // Pre-check with /api/find to avoid re-uploading
                 if (fileSize > 0) {
                     val findRes = apiClient.find(fileName, fileSize)
                     val existing = findRes.getOrNull()
                     if (existing != null) {
-                        _userMessage.value = "El video ya existía en la PC. Iniciando reproducción..."
+                        repository.showUserMessage("El video ya existía en la PC. Iniciando reproducción...")
                         playVideo(existing.r, existing.p)
                         _isUploading.value = false
                         return@launch
                     }
                 }
 
-                // Upload
                 val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
                 if (inputStream == null) {
-                    _errorMessage.value = "No se pudo leer el archivo seleccionado"
+                    repository.showErrorMessage("No se pudo leer el archivo seleccionado")
                     _isUploading.value = false
                     return@launch
                 }
 
-                _userMessage.value = "Subiendo $fileName a la PC..."
+                repository.showUserMessage("Subiendo $fileName a la PC...")
                 val uploadRes = apiClient.upload(fileName, inputStream, fileSize)
                 if (uploadRes.isSuccess) {
                     val uploaded = uploadRes.getOrNull()
-                    _userMessage.value = "Video subido con éxito"
+                    repository.showUserMessage("Video subido con éxito")
                     if (uploaded != null) {
                         playVideo(uploaded.r, uploaded.p)
                     }
-                    refreshStateImmediately()
+                    repository.refreshStateImmediately()
                 } else {
-                    _errorMessage.value = uploadRes.exceptionOrNull()?.message ?: "Error al subir video"
+                    repository.showErrorMessage(uploadRes.exceptionOrNull()?.message ?: "Error al subir video")
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Error al procesar archivo: ${e.message}"
+                repository.showErrorMessage("Error al procesar archivo: ${e.message}")
             } finally {
                 _isUploading.value = false
             }
         }
     }
 
-    private fun refreshStateImmediately() {
-        viewModelScope.launch {
-            val stateRes = apiClient.getState()
-            if (stateRes.isSuccess) {
-                _serverState.value = stateRes.getOrNull()
-                _isServerReachable.value = true
-            }
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        stopPolling()
+    fun refreshStateImmediately() {
+        repository.refreshStateImmediately()
     }
 }

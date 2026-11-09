@@ -72,7 +72,28 @@ import com.example.ui.theme.AirflowBorder
 import com.example.ui.theme.AirflowPanel
 import com.example.ui.theme.AirflowText
 import com.example.ui.theme.AirflowTextSecondary
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.core.content.ContextCompat
 import com.example.ui.theme.MKVCastTheme
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MKVCastViewModel by viewModels()
@@ -80,10 +101,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        handleIntent(intent)
+
         setContent {
             MKVCastTheme {
                 MKVCastApp(viewModel = viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_EXPANDED_PLAYER, false) == true) {
+            viewModel.setPlayerExpanded(true)
         }
     }
 
@@ -102,11 +138,35 @@ class MainActivity : ComponentActivity() {
             (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)) return true
         return super.onKeyUp(keyCode, event)
     }
+
+    companion object {
+        const val EXTRA_OPEN_EXPANDED_PLAYER = "extra_open_expanded_player"
+    }
 }
 
 @Composable
 fun MKVCastApp(viewModel: MKVCastViewModel) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    var hasRequestedNotificationPermission by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { /* Notification permission result handled gracefully */ }
+    )
+
+    val crashFile = remember { File(context.filesDir, "last_crash.txt") }
+    var crashLogText by remember {
+        mutableStateOf(
+            if (crashFile.exists()) {
+                try {
+                    crashFile.readText().takeIf { it.isNotBlank() }
+                } catch (_: Exception) {
+                    null
+                }
+            } else null
+        )
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -141,6 +201,21 @@ fun MKVCastApp(viewModel: MKVCastViewModel) {
     val currentFolderIndex by viewModel.currentFolderIndex.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Request POST_NOTIFICATIONS permission when playback begins for the first time on Android 13+
+    val nowPlaying = serverState?.now
+    LaunchedEffect(nowPlaying) {
+        if (nowPlaying != null && !hasRequestedNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            hasRequestedNotificationPermission = true
+            val isGranted = ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!isGranted) {
+                permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     LaunchedEffect(userMessage) {
         userMessage?.let {
@@ -395,5 +470,62 @@ fun MKVCastApp(viewModel: MKVCastViewModel) {
                 )
             }
         }
+    }
+
+    if (crashLogText != null) {
+        AlertDialog(
+            onDismissRequest = {
+                try { crashFile.delete() } catch (_: Exception) {}
+                crashLogText = null
+            },
+            title = {
+                Text(
+                    text = "Registro de error anterior",
+                    fontWeight = FontWeight.Bold,
+                    color = AirflowText
+                )
+            },
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 350.dp)
+                        .background(Color(0xFF14171F), shape = RoundedCornerShape(8.dp))
+                        .padding(10.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = crashLogText ?: "",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        color = Color(0xFFFFB74D)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("MKVCast Crash Log", crashLogText ?: "")
+                        clipboard.setPrimaryClip(clip)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D8DFF))
+                ) {
+                    Text("Copiar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        try { crashFile.delete() } catch (_: Exception) {}
+                        crashLogText = null
+                    }
+                ) {
+                    Text("Cerrar", color = AirflowTextSecondary)
+                }
+            },
+            containerColor = AirflowPanel
+        )
     }
 }
