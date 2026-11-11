@@ -234,6 +234,11 @@ class PlaybackRepository private constructor(private val appContext: Context) {
     @Volatile
     private var serviceStartBlockedUntil = 0L
 
+    // Capítulo que el usuario cortó con la X: no se vuelve a mostrar su notificación hasta que
+    // el servidor quede inactivo, cambie de capítulo o el usuario inicie algo desde la app.
+    @Volatile
+    private var dismissedKey: String? = null
+
     fun blockServiceStart(ms: Long) {
         serviceStartBlockedUntil = SystemClock.elapsedRealtime() + ms
     }
@@ -241,11 +246,17 @@ class PlaybackRepository private constructor(private val appContext: Context) {
     private fun checkAndStartMediaService(state: ServerState?) {
         val now = state?.now
         val status = state?.status
+        val curKey = now?.let { "${it.r}_${it.p}" }
+        // Se olvida el "cortado" cuando el servidor queda inactivo o pasa a otro capítulo
+        if (dismissedKey != null && (curKey == null || status?.isIdle == true || curKey != dismissedKey)) {
+            dismissedKey = null
+        }
         // Solo se arranca en primer plano cuando está reproduciendo (en pausa, Media3 no pasa a primer plano
         // y Android cerraría la app por no llamar a startForeground a tiempo). Si ya estaba corriendo, sigue en pausa.
         if (now != null && status != null && (status.isPlaying || status.isBuffering)) {
             if (MKVCastMediaSessionService.isRunning) return
             if (SystemClock.elapsedRealtime() < serviceStartBlockedUntil) return
+            if (curKey != null && curKey == dismissedKey) return
             try {
                 val intent = Intent(appContext, MKVCastMediaSessionService::class.java)
                 ContextCompat.startForegroundService(appContext, intent)
@@ -269,6 +280,7 @@ class PlaybackRepository private constructor(private val appContext: Context) {
 
     fun playVideo(r: Int, p: String, audio: Int? = null, sub: Int? = null, start: Double? = null) {
         serviceStartBlockedUntil = 0L
+        dismissedKey = null
         applicationScope.launch {
             val res = apiClient.play(r, p, audio, sub, start)
             if (res.isFailure) {
@@ -287,6 +299,7 @@ class PlaybackRepository private constructor(private val appContext: Context) {
         val status = _serverState.value?.status ?: return
         val cmd = if (status.isPlaying) "pause" else "resume"
         serviceStartBlockedUntil = 0L
+        dismissedKey = null
         applicationScope.launch {
             apiClient.control(cmd)
             refreshStateImmediately()
@@ -295,6 +308,7 @@ class PlaybackRepository private constructor(private val appContext: Context) {
 
     fun stopPlayback() {
         blockServiceStart(8000L)
+        _serverState.value?.now?.let { dismissedKey = "${it.r}_${it.p}" }
         applicationScope.launch {
             apiClient.control("stop")
             refreshStateImmediately()
