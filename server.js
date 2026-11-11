@@ -523,12 +523,15 @@ function defaultSub(info) {
   return t ? t.i : -1;
 }
 
+let playGen = 0;   // se incrementa con cada orden de reproducir/cortar: una reproducción pendiente cancelada no "revive"
 async function startPlay(item, o) {
   if (!o) o = {};
+  const gen = ++playGen;
   const dev = devices.get(curDev);
   if (!dev) throw new Error('Elige un Chromecast primero');
   const full = resolvePath(item.r, item.p);
   const info = await probe(full);
+  if (gen !== playGen) return;   // mientras se analizaba el archivo, se cortó o se pidió otra cosa
   const start = o.start != null ? o.start : (saved.positions[key(item)] || 0);
   now = { r: item.r, p: item.p, name: path.basename(item.p), audio: o.audio || 0, sub: o.sub != null ? o.sub : (saved.settings.autoSub ? defaultSub({ subs: subsOf(full, info) }) : -1), offset: start, duration: info.duration, delay: saved.subDelays[key(item)] || 0 };
   const url = 'http://' + ip + ':' + PORT + '/stream?r=' + item.r + '&p=' + encodeURIComponent(item.p) + '&t=' + start + '&a=' + now.audio + '&s=' + now.sub + '&k=' + streamKey + '&n=' + Date.now();
@@ -977,7 +980,7 @@ const server = http.createServer(async function(req, res) {
       if (!dev) return send(res, 400, { error: 'Sin dispositivo' });
       if (b.cmd === 'pause') dev.pause(function() {});
       else if (b.cmd === 'resume') dev.resume(function() {});
-      else if (b.cmd === 'stop') { dev.stop(function() {}); now = null; wasPlaying = false; }
+      else if (b.cmd === 'stop') { playGen++; now = null; wasPlaying = false; try { dev.stop(function() {}); } catch (e) { console.log('stop:', e.message); } }
       else if (b.cmd === 'volume') {
         const lv = Math.max(0, Math.min(1, Number(b.value)));
         if (!isNaN(lv)) { lastVolume = Math.round(lv * 100) / 100; status.volume = lastVolume; dev.setVolume(lv, function() {}); }
