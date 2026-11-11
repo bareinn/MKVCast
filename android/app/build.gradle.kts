@@ -11,8 +11,8 @@ android {
     applicationId = "com.aistudio.mkvcast.remote"
     minSdk = 24
     targetSdk = 36
-    versionCode = 23
-    versionName = "2.3.0"
+    versionCode = 24
+    versionName = "2.3.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
