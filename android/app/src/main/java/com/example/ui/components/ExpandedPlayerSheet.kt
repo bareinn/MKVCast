@@ -125,7 +125,11 @@ fun ExpandedPlayerSheet(
     val currentDelay = pendingSubDelay ?: now.delay
 
     val volumeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { volumeFocus.requestFocus() }
+    LaunchedEffect(Unit) {
+        // El contenido del panel se arma en otra ventana: se espera un instante y se ignora si todavía no está listo
+        kotlinx.coroutines.delay(150)
+        try { volumeFocus.requestFocus() } catch (e: IllegalStateException) { /* sin foco: el volumen igual responde por la sesión multimedia */ }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
